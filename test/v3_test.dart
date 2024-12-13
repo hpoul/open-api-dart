@@ -261,6 +261,22 @@ void main() {
     });
   });
 
+  test("Server Variable enum is optional", () {
+    final doc = APIDocument.fromMap({
+      "servers": [
+        {
+          "url": "https://{host}/path",
+          "variables": {
+            "host": {"default": "example.com"}
+          }
+        }
+      ],
+      "info": {}
+    });
+
+    expect(doc.servers!.first!.variables!["host"]!.availableValues, isNull);
+  });
+
   group("Callbacks", () {});
 
   group("'add' methods", () {
