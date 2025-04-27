@@ -365,5 +365,13 @@ void main() {
               .length,
           2);
     });
+     test("Components schemas is optional", () {
+    final doc = APIDocument.fromMap({
+      "info": {},
+      "components": {}
+    });
+
+    expect(doc.components?.schemas, isNull);
+  });
   });
 }
