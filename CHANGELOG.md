@@ -101,6 +101,14 @@
   `false`. For a query or cookie parameter (or an encoding) a missing
   `explode` means true, so code that relied on the implicit `false` must now
   set `explode = false`. Decoded documents are unaffected.
+- **Breaking:** a schema without `additionalProperties` now has
+  `additionalPropertyPolicy == null` instead of `restricted` with no schema.
+  JSON Schema treats a missing value as `freeForm`; the generator has
+  treated it as `disallowed`. Code that merges `allOf` members should take
+  the member's policy when the schema's own is null.
+  `APISchemaObject.map()` now sets the policy too (`restricted`, or
+  `freeForm` for `any: true`), so a decoded or `.map()`-built `restricted`
+  always comes with an `additionalPropertySchema`.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 
