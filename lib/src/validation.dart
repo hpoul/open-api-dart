@@ -67,6 +67,9 @@ final class _Validator {
     const p = '#';
     _required(p, 'openapi', d.version);
     _isOpenApi31 = d.isOpenApi31;
+    if (!_isOpenApi31 && !d.hasPaths) {
+      _required(p, 'paths', null);
+    }
     if (_isOpenApi31 &&
         !d.hasPaths &&
         d.components == null &&
@@ -95,6 +98,25 @@ final class _Validator {
     _servers(p, d.servers);
     final paths = appendPointer(p, 'paths');
     final referencedFrom = <Uri, String>{};
+    // A path item used by several paths or webhooks repeats its
+    // operationIds.
+    void shared(String pointer, String user, APIPath path) {
+      final ref = path.referenceURI;
+      if (ref == null) {
+        return;
+      }
+      final other = referencedFrom[ref];
+      if (other == null) {
+        referencedFrom[ref] = user;
+      } else if (path.operations.values.any((o) => o.id != null)) {
+        _issue(
+          appendPointer(pointer, r'$ref'),
+          "Path item '#${ref.path}' is also used by $other, so its "
+          'operationIds are not unique.',
+        );
+      }
+    }
+
     d.paths.forEach((key, path) {
       if (key.startsWith('x-')) {
         return;
@@ -116,25 +138,15 @@ final class _Validator {
           ...operation.parameters,
         ]);
       });
-      final other = referencedFrom[ref];
-      if (other == null) {
-        referencedFrom[ref] = key;
-      } else if (path.operations.values.any((o) => o.id != null)) {
-        _issue(
-          appendPointer(pp, r'$ref'),
-          "Path item '#${ref.path}' is also used by path '$other', so its "
-          'operationIds are not unique.',
-        );
-      }
+      shared(pp, "path '$key'", path);
     });
     final webhooks = d.webhooks;
     if (webhooks != null) {
-      _each(
-        appendPointer(p, 'webhooks'),
-        webhooks,
-        _path,
-        skipExtensions: true,
-      );
+      final wp = appendPointer(p, 'webhooks');
+      _each(wp, webhooks, _path);
+      webhooks.forEach((name, path) {
+        shared(appendPointer(wp, name), "webhook '$name'", path);
+      });
     }
     final components = d.components;
     if (components != null) {
@@ -234,7 +246,9 @@ final class _Validator {
           return;
         }
         final type = schemes[name];
-        if (scopes.isNotEmpty &&
+        // OpenAPI 3.1 allows role names for the other types.
+        if (!_isOpenApi31 &&
+            scopes.isNotEmpty &&
             type != APISecuritySchemeType.oauth2 &&
             type != APISecuritySchemeType.openIdConnect) {
           _issue(
@@ -345,8 +359,8 @@ final class _Validator {
       _requestBody(appendPointer(p, 'requestBody'), body);
     }
     final rp = appendPointer(p, 'responses');
-    // OpenAPI 3.1 no longer requires responses.
-    if (!_isOpenApi31 &&
+    // OpenAPI 3.1 no longer requires responses, but given ones need a code.
+    if ((!_isOpenApi31 || operation.hasResponses) &&
         operation.responses.keys.every((key) => key.startsWith('x-'))) {
       _issue(rp, 'An operation must have at least one response.');
     }

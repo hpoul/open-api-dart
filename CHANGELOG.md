@@ -18,7 +18,11 @@
   `identifier` and `url`, and a path item with operationIds used by
   several paths. It checks webhooks and `components/pathItems`, and the
   path template of a path that is a `$ref`. In 3.1, operations need no
-  `responses`.
+  `responses` (`APIOperation.hasResponses`; an operation decoded without
+  them is encoded without them), and security requirements may list role
+  names for any scheme type. A 3.0 document without `paths` is reported.
+- **Breaking:** `APISecuritySchemeType` has a new value, `mutualTLS`; a
+  `switch` over it without a default needs a case for it.
 
 ## 4.0.0-dev.1
 

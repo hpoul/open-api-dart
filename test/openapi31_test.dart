@@ -382,5 +382,75 @@ void main() {
         ['#/paths/~1a~1{id}/get/parameters', '#/paths/~1b/\$ref'],
       );
     });
+
+    test('3.1 responses: absent stays absent, empty is reported', () {
+      final map = {
+        'openapi': '3.1.0',
+        'info': {'title': 't', 'version': '1'},
+        'webhooks': {
+          'hook': {'post': <String, Object?>{}},
+          'empty': {
+            'post': {'responses': <String, Object?>{}},
+          },
+        },
+      };
+      final doc = _doc(map);
+      expect(doc.webhooks!['hook']!.operations['post']!.hasResponses, isFalse);
+      expect(_encoded(doc), map);
+      expect(pointers(map), ['#/webhooks/empty/post/responses']);
+    });
+
+    test('a 3.0 document needs paths', () {
+      expect(
+        pointers({
+          'openapi': '3.0.3',
+          'info': {'title': 't', 'version': '1'},
+        }),
+        ['#/paths'],
+      );
+    });
+
+    test('role names in security requirements are allowed in 3.1 only', () {
+      Map<String, Object?> doc(String version) => {
+        'openapi': version,
+        'info': {'title': 't', 'version': '1'},
+        'paths': <String, Object?>{},
+        'components': {
+          'securitySchemes': {
+            'm': {'type': 'mutualTLS'},
+          },
+        },
+        'security': [
+          {
+            'm': ['admin'],
+          },
+        ],
+      };
+      expect(pointers(doc('3.1.0')), isEmpty);
+      expect(pointers(doc('3.0.3')), ['#/security/0/m']);
+    });
+
+    test('a path item shared by a path and a webhook is reported', () {
+      expect(
+        pointers({
+          'openapi': '3.1.0',
+          'info': {'title': 't', 'version': '1'},
+          'paths': {
+            '/a': {r'$ref': '#/components/pathItems/Item'},
+          },
+          'webhooks': {
+            'hook': {r'$ref': '#/components/pathItems/Item'},
+          },
+          'components': {
+            'pathItems': {
+              'Item': {
+                'post': {'operationId': 'post'},
+              },
+            },
+          },
+        }),
+        ['#/webhooks/hook/\$ref'],
+      );
+    });
   });
 }
