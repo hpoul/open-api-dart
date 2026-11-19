@@ -300,8 +300,8 @@ void main() {
 
     test("Callbacks survive an encode/decode round trip", () {
       final encoded = APIDocument.fromMap(spec).asMap();
-      final callback = encoded["paths"]["/subscribe"]["post"]["callbacks"]
-          ["onEvent"] as Map;
+      final callback =
+          encoded["paths"]["/subscribe"]["post"]["callbacks"]["onEvent"] as Map;
       expect(callback["x-note"], "extension");
       expect(
           callback[r"{$request.body#/callbackUrl}"]["post"]["responses"]["200"]
@@ -389,8 +389,7 @@ void main() {
     test("Empty document-level security stays distinct from absent", () {
       expect(APIDocument.fromMap(minimal({"security": []})).security, isEmpty);
       expect(APIDocument.fromMap(minimal()).security, isNull);
-      expect(
-          APIDocument.fromMap(minimal({"security": []})).asMap()["security"],
+      expect(APIDocument.fromMap(minimal({"security": []})).asMap()["security"],
           isEmpty);
     });
 
@@ -407,8 +406,8 @@ void main() {
           }
         }
       }));
-      final flow = doc.components!.securitySchemes!["oauth"]!
-          .flows!["clientCredentials"]!;
+      final flow = doc
+          .components!.securitySchemes!["oauth"]!.flows!["clientCredentials"]!;
       expect(flow.scopes, isEmpty);
       expect(flow.tokenURL, Uri.parse("https://example.com/token"));
       expect(json.encode(doc.asMap()), contains('"scopes":{}'));
@@ -437,8 +436,8 @@ void main() {
       test("Unresolvable reference '$ref' throws ArgumentError", () {
         expect(
             () => APIDocument.fromMap(withRef(ref)),
-            throwsA(isA<ArgumentError>().having((e) => e.message, "message",
-                contains("Reference '$ref'"))));
+            throwsA(isA<ArgumentError>().having(
+                (e) => e.message, "message", contains("Reference '$ref'"))));
       });
     }
 
@@ -448,12 +447,45 @@ void main() {
       expect(doc.components!.schemas!["A"]!.type, APIType.string);
     });
 
+    test("Reference through another reference still resolves", () {
+      final doc = APIDocument.fromMap(minimal({
+        "components": {
+          "schemas": {
+            "B": {
+              "type": "object",
+              "properties": {
+                "x": {"type": "string"}
+              }
+            },
+            "A": {r"$ref": "#/components/schemas/B"},
+            "C": {r"$ref": "#/components/schemas/A/properties/x"}
+          }
+        }
+      }));
+      expect(doc.components!.schemas!["C"]!.type, APIType.string);
+    });
+
+    test("\$ref inside examples and extensions is left alone", () {
+      final doc = APIDocument.fromMap(minimal({
+        "x-snippet": {r"$ref": "other.json"},
+        "components": {
+          "schemas": {
+            "A": {
+              "type": "object",
+              "example": {r"$ref": "https://example.com/a.json"}
+            }
+          }
+        }
+      }));
+      expect(doc.components!.schemas!["A"]!.type, APIType.object);
+    });
+
     test("Reference to another file throws instead of resolving locally", () {
       expect(
-          () => APIDocument.fromMap(
-              withRef("other.yaml#/components/schemas/B")),
+          () =>
+              APIDocument.fromMap(withRef("other.yaml#/components/schemas/B")),
           throwsA(isA<ArgumentError>().having(
-              (e) => e.message, "message", contains("another document"))));
+              (e) => e.message, "message", contains("not a local reference"))));
     });
   });
 

@@ -19,6 +19,16 @@ class APIDocument extends APIObject {
     decode(KeyedArchive.unarchive(map, allowReferences: true));
   }
 
+  /// Keys whose values are free-form data, not OpenAPI objects. A `$ref`
+  /// in there is just data, so it is not checked.
+  static const _freeFormKeys = {
+    "example",
+    "examples",
+    "default",
+    "enum",
+    "value"
+  };
+
   /// Validates every `$ref` in [node] before [KeyedArchive] resolves them,
   /// so that bad references fail with a clear message instead of a
   /// [TypeError], and references into other files are not silently
@@ -37,22 +47,45 @@ class APIDocument extends APIObject {
     if (ref is String) {
       if (!ref.startsWith("#")) {
         throw ArgumentError(
-            "Invalid document. Reference '$ref' points to another document; "
-            "only references within the same document ('#/...') are supported.");
+            "Invalid document. Reference '$ref' is not a local reference "
+            "('#/...'); references to other documents are not supported.");
       }
-      dynamic target = root;
-      for (final segment in Uri.parse(Uri.parse(ref).fragment).pathSegments) {
-        target = target is Map ? target[segment] : null;
-      }
-      if (target is! Map) {
+      if (_resolvePointer(root, ref) is! Map) {
         throw ArgumentError(
             "Invalid document. Reference '$ref' does not point to an object "
             "in document.");
       }
     }
-    for (final value in node.values) {
+    node.forEach((key, value) {
+      if (key is String &&
+          (key.startsWith("x-") || _freeFormKeys.contains(key))) {
+        return;
+      }
       _checkReferences(root, value);
+    });
+  }
+
+  /// Walks [ref] from [root] the way [KeyedArchive] resolves it, including
+  /// following `$ref`s met along the way.
+  static dynamic _resolvePointer(Map root, String ref, [int depth = 0]) {
+    if (depth > 32) {
+      return null;
     }
+    dynamic target = root;
+    for (final segment in Uri.parse(Uri.parse(ref).fragment).pathSegments) {
+      if (target is! Map) {
+        return null;
+      }
+      final next = target[segment];
+      final via = target[r"$ref"];
+      if (next == null && via is String && via.startsWith("#")) {
+        final resolved = _resolvePointer(root, via, depth + 1);
+        target = resolved is Map ? resolved[segment] : null;
+      } else {
+        target = next;
+      }
+    }
+    return target;
   }
 
   /// This string MUST be the semantic version number of the OpenAPI Specification version that the OpenAPI document uses.
