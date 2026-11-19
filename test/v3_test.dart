@@ -261,7 +261,139 @@ void main() {
     });
   });
 
-  group("Callbacks", () {});
+  group("Callbacks", () {
+    final spec = {
+      "openapi": "3.0.0",
+      "info": {"title": "x", "version": "1"},
+      "paths": {
+        "/subscribe": {
+          "post": {
+            "responses": {
+              "201": {"description": "ok"}
+            },
+            "callbacks": {
+              "onEvent": {
+                "x-note": "extension",
+                r"{$request.body#/callbackUrl}": {
+                  "post": {
+                    "responses": {
+                      "200": {"description": "ok"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+
+    test("Can decode operation callbacks", () {
+      final doc = APIDocument.fromMap(spec);
+      final callback =
+          doc.paths!["/subscribe"]!.operations["post"]!.callbacks!["onEvent"]!;
+      expect(callback.paths.keys, [r"{$request.body#/callbackUrl}"]);
+      expect(callback.paths.values.single.operations["post"]!.responses!["200"],
+          isNotNull);
+      expect(callback.extensions, {"x-note": "extension"});
+    });
+
+    test("Callbacks survive an encode/decode round trip", () {
+      final encoded = APIDocument.fromMap(spec).asMap();
+      final callback = encoded["paths"]["/subscribe"]["post"]["callbacks"]
+          ["onEvent"] as Map;
+      expect(callback["x-note"], "extension");
+      expect(
+          callback[r"{$request.body#/callbackUrl}"]["post"]["responses"]["200"]
+              ["description"],
+          "ok");
+      expect(APIDocument.fromMap(encoded).asMap(), encoded);
+    });
+  });
+
+  group("Phase 0 crash regressions", () {
+    Map<String, dynamic> minimal([Map<String, dynamic> extra = const {}]) => {
+          "openapi": "3.0.0",
+          "info": {"title": "x", "version": "1"},
+          "paths": <String, dynamic>{},
+          ...extra,
+        };
+
+    test("Components without schemas decode to an empty schema map", () {
+      final doc = APIDocument.fromMap(minimal({
+        "components": {
+          "responses": {
+            "NotFound": {"description": "not found"}
+          }
+        }
+      }));
+      expect(doc.components!.schemas, isEmpty);
+      expect(doc.components!.responses!["NotFound"], isNotNull);
+    });
+
+    test("Server variable without enum", () {
+      final doc = APIDocument.fromMap(minimal({
+        "servers": [
+          {
+            "url": "https://{host}/v1",
+            "variables": {
+              "host": {"default": "example.com"}
+            }
+          }
+        ]
+      }));
+      final variable = doc.servers!.single!.variables!["host"]!;
+      expect(variable.availableValues, isNull);
+      expect(variable.defaultValue, "example.com");
+      final encoded = doc.asMap()["servers"][0]["variables"]["host"] as Map;
+      expect(encoded.containsKey("enum"), isFalse);
+      expect(encoded["default"], "example.com");
+    });
+
+    test("Server variable with enum still decodes", () {
+      final doc = APIDocument.fromMap(minimal({
+        "servers": [
+          {
+            "url": "https://{host}/v1",
+            "variables": {
+              "host": {
+                "default": "a.example.com",
+                "enum": ["a.example.com", "b.example.com"]
+              }
+            }
+          }
+        ]
+      }));
+      expect(doc.servers!.single!.variables!["host"]!.availableValues,
+          ["a.example.com", "b.example.com"]);
+    });
+
+    test("openIdConnect security scheme round trips", () {
+      final doc = APIDocument.fromMap(minimal({
+        "components": {
+          "securitySchemes": {
+            "oidc": {
+              "type": "openIdConnect",
+              "openIdConnectUrl":
+                  "https://example.com/.well-known/openid-configuration"
+            }
+          }
+        }
+      }));
+      final scheme = doc.components!.securitySchemes!["oidc"]!;
+      expect(scheme.type, APISecuritySchemeType.openIdConnect);
+      expect(scheme.connectURL,
+          Uri.parse("https://example.com/.well-known/openid-configuration"));
+
+      final encoded =
+          doc.asMap()["components"]["securitySchemes"]["oidc"] as Map;
+      expect(encoded, {
+        "type": "openIdConnect",
+        "openIdConnectUrl":
+            "https://example.com/.well-known/openid-configuration",
+      });
+    });
+  });
 
   group("'add' methods", () {
     test("'addHeader'", () {
