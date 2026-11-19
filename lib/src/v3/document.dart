@@ -39,10 +39,16 @@ final class APIDocument extends APIObject {
   }
 
   /// Fields of OpenAPI objects whose values are free-form data: schema
-  /// `example`/`default`/`enum`, the `example` of parameters, headers and
+  /// `example`/`default`/`enum`/`const`, the `example` of parameters, headers and
   /// media types, an Example's `value`, and server variable
   /// `default`/`enum`.
-  static const _freeFormFields = {'example', 'default', 'enum', 'value'};
+  static const _freeFormFields = {
+    'example',
+    'default',
+    'enum',
+    'value',
+    'const',
+  };
 
   /// Link fields holding constants or runtime expressions.
   static const _freeFormLinkFields = {'parameters', 'requestBody'};

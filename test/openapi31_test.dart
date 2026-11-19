@@ -8,6 +8,15 @@ import 'package:test/test.dart';
 APIDocument _doc(Map<String, Object?> map) =>
     APIDocument.fromMap(json.decode(json.encode(map)) as Map<String, dynamic>);
 
+Map<String, Object?> _encodedSchema(APISchemaObject schema) =>
+    _encoded(
+          APIDocument()
+            ..version = '3.1.0'
+            ..info = APIInfo('t', '1')
+            ..components = (APIComponents()..schemas = {'S': schema}),
+        )['components']['schemas']['S']
+        as Map<String, Object?>;
+
 Map<String, dynamic> _encoded(APIDocument doc) =>
     json.decode(json.encode(doc.asMap())) as Map<String, dynamic>;
 
@@ -455,6 +464,346 @@ void main() {
         }),
         ['#/webhooks/hook/\$ref'],
       );
+    });
+  });
+
+  group('schema', () {
+    APIDocument schemaDoc(Map<String, Object?> schemas) => _doc({
+      'openapi': '3.1.0',
+      'info': {'title': 't', 'version': '1'},
+      'components': {'schemas': schemas},
+    });
+
+    Map<String, Object?> encodedSchemas(APIDocument doc) =>
+        (_encoded(doc)['components'] as Map)['schemas'] as Map<String, Object?>;
+
+    test('type arrays and the null type', () {
+      final schemas = {
+        'NullableString': {
+          'type': ['string', 'null'],
+        },
+        'StringOrInt': {
+          'type': ['string', 'integer'],
+        },
+        'OnlyNull': {'type': 'null'},
+        'Plain': {'type': 'string'},
+        'Legacy': {'type': 'string', 'nullable': true},
+        'Unknown': {
+          'type': ['string', 'file'],
+        },
+      };
+      final doc = schemaDoc(schemas);
+      final s = doc.components!.schemas;
+      expect(s['NullableString']!.type, APIType.string);
+      expect(s['NullableString']!.types, [APIType.string]);
+      expect(s['NullableString']!.isNullable, isTrue);
+      expect(s['StringOrInt']!.type, isNull);
+      expect(s['StringOrInt']!.types, [APIType.string, APIType.integer]);
+      expect(s['StringOrInt']!.isNullable, isFalse);
+      expect(s['OnlyNull']!.type, isNull);
+      expect(s['OnlyNull']!.types, isEmpty);
+      expect(s['OnlyNull']!.isNullable, isTrue);
+      expect(s['Plain']!.types, [APIType.string]);
+      expect(s['Plain']!.isNullable, isFalse);
+      expect(s['Legacy']!.isNullable, isTrue);
+      expect(s['Unknown']!.type, APIType.string);
+
+      final encoded = encodedSchemas(doc);
+      expect(encoded['NullableString'], schemas['NullableString']);
+      expect(encoded['StringOrInt'], schemas['StringOrInt']);
+      expect(encoded['OnlyNull'], schemas['OnlyNull']);
+      expect(encoded['Plain'], schemas['Plain']);
+      expect(encoded['Legacy'], schemas['Legacy']);
+      // Types this package does not know are dropped.
+      expect(encoded['Unknown'], {
+        'type': ['string'],
+      });
+    });
+
+    test('isNullable keeps the form the schema was written in', () {
+      final doc = schemaDoc({
+        'A': {
+          'type': ['string'],
+        },
+        'B': {'type': 'string'},
+        'C': {
+          'type': ['string', 'null'],
+        },
+        'D': {'type': 'null'},
+      });
+      final s = doc.components!.schemas;
+      s['A']!.isNullable = true;
+      s['B']!.isNullable = true;
+      s['C']!.isNullable = false;
+      s['D']!.isNullable = false;
+      final encoded = encodedSchemas(doc);
+      expect(encoded['A'], {
+        'type': ['string', 'null'],
+      });
+      expect(encoded['B'], {'type': 'string', 'nullable': true});
+      expect(encoded['C'], {
+        'type': ['string'],
+      });
+      expect(encoded['D'], <String, Object?>{});
+      expect(s['D']!.isNullable, isFalse);
+    });
+
+    test('setting type or types', () {
+      final schema = APISchemaObject()
+        ..types = [APIType.string, APIType.integer];
+      expect(schema.type, isNull);
+      schema.isNullable = true;
+      expect(_encodedSchema(schema), {
+        'type': ['string', 'integer', 'null'],
+      });
+      schema.type = APIType.number;
+      expect(schema.types, [APIType.number]);
+      // Still nullable, so it needs the array form.
+      expect(_encodedSchema(schema), {
+        'type': ['number', 'null'],
+      });
+      expect(_encodedSchema(APISchemaObject.string()), {'type': 'string'});
+      // No types and not nullable: no `type`, not an empty array.
+      expect(_encodedSchema(APISchemaObject()..types = []), isEmpty);
+      expect(
+        () => APISchemaObject.string().types.add(APIType.number),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('a type that is not a string or list is a format error', () {
+      expect(
+        () => schemaDoc({
+          'A': {'type': 1},
+        }),
+        throwsA(
+          isA<OpenApiFormatException>().having(
+            (e) => e.pointer,
+            'pointer',
+            '#/components/schemas/A/type',
+          ),
+        ),
+      );
+      expect(
+        () => schemaDoc({
+          'A': {
+            'type': [1],
+          },
+        }),
+        throwsA(isA<OpenApiFormatException>()),
+      );
+    });
+
+    test('numeric and boolean exclusive limits', () {
+      final schemas = {
+        'V31': {'type': 'integer', 'exclusiveMinimum': 0, 'maximum': 10},
+        'V30': {
+          'type': 'integer',
+          'minimum': 0,
+          'exclusiveMinimum': true,
+          'maximum': 10,
+          'exclusiveMaximum': false,
+        },
+      };
+      final doc = schemaDoc(schemas);
+      final v31 = doc.components!.schemas['V31']!;
+      final v30 = doc.components!.schemas['V30']!;
+      expect(v31.exclusiveMinimum, isNull);
+      expect(v31.exclusiveMinimumValue, 0);
+      expect(v31.effectiveExclusiveMinimum, 0);
+      expect(v31.effectiveExclusiveMaximum, isNull);
+      expect(v30.exclusiveMinimum, isTrue);
+      expect(v30.exclusiveMinimumValue, isNull);
+      expect(v30.effectiveExclusiveMinimum, 0);
+      expect(v30.effectiveExclusiveMaximum, isNull);
+      expect(encodedSchemas(doc), schemas);
+      expect(
+        () => schemaDoc({
+          'A': {'exclusiveMinimum': 'yes'},
+        }),
+        throwsA(isA<OpenApiFormatException>()),
+      );
+    });
+
+    test('const, examples, contentMediaType and contentEncoding', () {
+      final schemas = {
+        'A': {
+          'const': {
+            r'$ref': 'not a reference',
+            'nested': [1, 2],
+          },
+          'examples': [
+            'a',
+            {r'$ref': 'also data'},
+          ],
+        },
+        'Upload': {
+          'type': 'string',
+          'contentMediaType': 'image/png',
+          'contentEncoding': 'base64',
+        },
+      };
+      final doc = schemaDoc(schemas);
+      final a = doc.components!.schemas['A']!;
+      expect(a.constValue, {
+        r'$ref': 'not a reference',
+        'nested': [1, 2],
+      });
+      expect(a.examples, [
+        'a',
+        {r'$ref': 'also data'},
+      ]);
+      final upload = doc.components!.schemas['Upload']!;
+      expect(upload.contentMediaType, 'image/png');
+      expect(upload.contentEncoding, 'base64');
+      expect(encodedSchemas(doc), schemas);
+    });
+  });
+
+  group(r'$ref siblings', () {
+    test('are decoded over the target and encoded again', () {
+      final map = {
+        'openapi': '3.1.0',
+        'info': {'title': 't', 'version': '1'},
+        'paths': {
+          '/pets': {
+            'get': {
+              'responses': {
+                '200': {
+                  r'$ref': '#/components/responses/Ok',
+                  'description': 'Pets',
+                },
+              },
+            },
+          },
+        },
+        'components': {
+          'schemas': {
+            'Pet': {
+              'type': 'object',
+              'properties': {
+                'parent': {
+                  r'$ref': '#/components/schemas/Pet',
+                  'description': 'The parent pet',
+                  'readOnly': true,
+                },
+                'sibling': {r'$ref': '#/components/schemas/Pet'},
+              },
+            },
+          },
+          'responses': {
+            'Ok': {'description': 'ok'},
+          },
+        },
+      };
+      final doc = _doc(map);
+      final parent = doc.components!.schemas['Pet']!.properties['parent']!;
+      expect(parent.referenceURI, Uri(path: '/components/schemas/Pet'));
+      expect(parent.description, 'The parent pet');
+      expect(parent.isReadOnly, isTrue);
+      expect(parent.type, APIType.object);
+      expect(parent.referenceSiblingKeys, {'description', 'readOnly'});
+      expect(
+        doc
+            .components!
+            .schemas['Pet']!
+            .properties['sibling']!
+            .referenceSiblingKeys,
+        isEmpty,
+      );
+      expect(_encoded(doc), map);
+    });
+
+    test('follow edits, and can be added in code', () {
+      final doc = _doc({
+        'openapi': '3.1.0',
+        'info': {'title': 't', 'version': '1'},
+        'components': {
+          'schemas': {
+            'Pet': {'type': 'object'},
+            'Owner': {
+              'properties': {
+                'pet': {
+                  r'$ref': '#/components/schemas/Pet',
+                  'description': 'old',
+                },
+                'other': {r'$ref': '#/components/schemas/Pet'},
+              },
+            },
+          },
+        },
+      });
+      final owner = doc.components!.schemas['Owner']!;
+      owner.properties['pet']!.description = 'new';
+      owner.properties['other']!
+        ..description = 'added'
+        ..referenceSiblingKeys.add('description');
+      final properties =
+          ((_encoded(doc)['components'] as Map)['schemas']
+              as Map)['Owner']['properties'];
+      expect(properties, {
+        'pet': {r'$ref': '#/components/schemas/Pet', 'description': 'new'},
+        'other': {r'$ref': '#/components/schemas/Pet', 'description': 'added'},
+      });
+    });
+
+    test('a sibling that leads back to the reference ends', () {
+      final doc = _doc({
+        'openapi': '3.1.0',
+        'info': {'title': 't', 'version': '1'},
+        'components': {
+          'schemas': {
+            'Pet': {
+              'type': 'object',
+              'properties': {
+                'parent': {
+                  r'$ref': '#/components/schemas/Pet',
+                  'description': 'The parent',
+                },
+              },
+            },
+          },
+        },
+      });
+      final pet = doc.components!.schemas['Pet']!;
+      final parent = pet.properties['parent']!;
+      // The reference holds its target's properties, which hold itself.
+      expect(parent.properties['parent'], same(parent));
+      parent.referenceSiblingKeys.add('properties');
+      final encoded =
+          ((_encoded(doc)['components'] as Map)['schemas'] as Map)['Pet']
+              as Map;
+      expect(encoded['properties']['parent'], {
+        r'$ref': '#/components/schemas/Pet',
+        'description': 'The parent',
+        'properties': {
+          'parent': {r'$ref': '#/components/schemas/Pet'},
+        },
+      });
+    });
+
+    test('3.0 nullable next to a ref round trips', () {
+      final map = {
+        'openapi': '3.0.3',
+        'info': {'title': 't', 'version': '1'},
+        'paths': <String, Object?>{},
+        'components': {
+          'schemas': {
+            'Pet': {'type': 'object'},
+            'Owner': {
+              'type': 'object',
+              'properties': {
+                'pet': {r'$ref': '#/components/schemas/Pet', 'nullable': true},
+              },
+            },
+          },
+        },
+      };
+      final doc = _doc(map);
+      final pet = doc.components!.schemas['Owner']!.properties['pet']!;
+      expect(pet.isNullable, isTrue);
+      expect(pet.type, APIType.object);
+      expect(_encoded(doc), map);
     });
   });
 }

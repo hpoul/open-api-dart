@@ -9,6 +9,26 @@
   security scheme type. A 3.1 document without `paths` decodes, and is
   encoded without them (`APIDocument.hasPaths`). Webhook operations are not
   part of `APIDocument.operations`.
+- OpenAPI 3.1 documents, part 2 (schemas):
+  - `type` may be an array. `APISchemaObject.types` has all types besides
+    `"null"`; `type` is the single one, or `null` when there are several.
+    A `"null"` type makes `isNullable` true, and setting `isNullable` keeps
+    the form the schema was written in (`nullable` or a `"null"` type).
+  - Numeric `exclusiveMinimum`/`exclusiveMaximum` decode into
+    `exclusiveMinimumValue`/`exclusiveMaximumValue`; the 3.0 flags stay in
+    `exclusiveMinimum`/`exclusiveMaximum`. `effectiveExclusiveMinimum` and
+    `effectiveExclusiveMaximum` give the limit for either form.
+  - `constValue`, `examples` (a list), `contentMediaType`,
+    `contentEncoding`.
+  - Keys next to a `$ref` (OpenAPI 3.1 Reference `description`, and the
+    keywords next to a schema `$ref`) are encoded again, with the current
+    field values: `APIObject.referenceSiblingKeys`. Before, they were
+    decoded but dropped on encode. Only keys the object models are
+    written: a `summary` next to a parameter or response `$ref` is
+    dropped, as those objects have no `summary`.
+  - A `type` that is not a string or a list of strings, or an exclusive
+    limit that is neither a boolean nor a number, is an
+    `OpenApiFormatException`.
 - A path item that is a `$ref` (for example to `components/pathItems`) now
   exposes the operations of the path item it points to. Before, its
   `operations` were empty, so code generated from such a spec now has

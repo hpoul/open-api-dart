@@ -15,12 +15,30 @@ abstract base class APIObject {
   /// it references.
   Uri? referenceURI;
 
+  /// For a `$ref`, the keys written next to it, such as `description`.
+  ///
+  /// OpenAPI 3.1 lets a Reference Object override the `summary` and
+  /// `description` of its target, and a schema `$ref` have any other
+  /// keyword next to it. When decoded, the referencing object's fields hold
+  /// these values, and the target's for everything else; when encoded, the
+  /// keys in this set are written next to the `$ref`, with the current
+  /// values of the fields. Add a key to write a field set in code; the
+  /// object must then have the fields its type requires (a parameter its
+  /// `name` and `in`), as when it is encoded inline.
+  Set<String> referenceSiblingKeys = {};
+
   /// Specification extensions: the `x-` keys of this object.
   Map<String, dynamic> extensions = {};
 
   @mustCallSuper
   void decode(KeyedArchive object) {
     referenceURI = object.referenceURI;
+    if (referenceURI != null) {
+      referenceSiblingKeys = {
+        for (final key in object.keys)
+          if (key != r'$ref') key,
+      };
+    }
     object.rememberEmptyKeys(this);
 
     final extensionKeys = object.keys.where((k) => k.startsWith('x-'));
