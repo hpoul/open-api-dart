@@ -63,7 +63,7 @@ void main() {
     expect(APIType.fromJson('null'), isNull);
     expect(APIType.fromJson(null), isNull);
     expect(APIParameterLocation.fromJson('body'), isNull);
-    expect(APISecuritySchemeType.fromJson('mutualTLS'), isNull);
+    expect(APISecuritySchemeType.fromJson('someFutureType'), isNull);
   });
 
   test('deprecated codecs still work', () {

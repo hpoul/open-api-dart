@@ -101,14 +101,77 @@ void main() {
       expect(_encoded(doc).containsKey('webhooks'), isFalse);
     });
 
-    test('x- keys in webhooks are data, not path items', () {
-      final doc = _doc({
+    test('webhook names may start with x-, and webhooks may be refs', () {
+      final map = {
         ..._webhookExample,
         'webhooks': {
-          'x-note': {'post': 'not an operation'},
+          'x-hook': {
+            'post': {
+              'operationId': 'xHook',
+              'responses': {
+                '200': {'description': 'ok'},
+              },
+            },
+          },
+          'shared': {r'$ref': '#/components/pathItems/Shared'},
+        },
+        'components': {
+          'pathItems': {
+            'Shared': {
+              'post': {
+                'operationId': 'shared',
+                'responses': {
+                  '200': {'description': 'ok'},
+                },
+              },
+            },
+          },
+        },
+      };
+      final doc = _doc(map);
+      expect(doc.webhooks!['x-hook']!.operations['post']!.id, 'xHook');
+      expect(doc.webhooks!['shared']!.operations['post']!.id, 'shared');
+      expect(doc.validate(), isEmpty);
+      final encoded = _encoded(doc);
+      expect((encoded['webhooks'] as Map)['shared'], {
+        r'$ref': '#/components/pathItems/Shared',
+      });
+      expect(((encoded['webhooks'] as Map)['x-hook'] as Map).keys, ['post']);
+    });
+
+    test('empty paths in a 3.1 document stay', () {
+      final doc = _doc({
+        'openapi': '3.1.0',
+        'info': {'title': 't', 'version': '1'},
+        'paths': <String, Object?>{},
+      });
+      expect(doc.hasPaths, isTrue);
+      expect(_encoded(doc)['paths'], <String, Object?>{});
+      expect(doc.validate(), isEmpty);
+    });
+
+    test('a 3.0 path item ref exposes the operations of its target', () {
+      final doc = _doc({
+        'openapi': '3.0.3',
+        'info': {'title': 't', 'version': '1'},
+        'paths': {
+          '/pets': {r'$ref': '#/x-shared/pets'},
+        },
+        'x-shared': {
+          'pets': {
+            'get': {
+              'operationId': 'listPets',
+              'responses': {
+                '200': {'description': 'ok'},
+              },
+            },
+          },
         },
       });
-      expect(doc.webhooks, isEmpty);
+      expect(doc.operations.map((o) => o.operation.id), ['listPets']);
+      expect(_encoded(doc)['paths'], {
+        '/pets': {r'$ref': '#/x-shared/pets'},
+      });
     });
 
     test('jsonSchemaDialect, info summary and license identifier', () {
@@ -231,22 +294,92 @@ void main() {
     });
 
     test('webhooks and components pathItems are checked', () {
-      Map<String, Object?> operationWithoutResponses(String id) => {
-        'post': {'operationId': id},
+      Map<String, Object?> responseWithoutDescription(String id) => {
+        'post': {
+          'operationId': id,
+          'responses': {'200': <String, Object?>{}},
+        },
       };
       expect(
         pointers({
           'openapi': '3.1.0',
           'info': {'title': 't', 'version': '1'},
-          'webhooks': {'hook': operationWithoutResponses('a')},
+          'webhooks': {'hook': responseWithoutDescription('a')},
           'components': {
-            'pathItems': {'Item': operationWithoutResponses('b')},
+            'pathItems': {'Item': responseWithoutDescription('b')},
           },
         }),
         [
-          '#/webhooks/hook/post/responses',
-          '#/components/pathItems/Item/post/responses',
+          '#/webhooks/hook/post/responses/200/description',
+          '#/components/pathItems/Item/post/responses/200/description',
         ],
+      );
+    });
+
+    test('a 3.1 document needs paths, components or webhooks', () {
+      expect(
+        pointers({
+          'openapi': '3.1.0',
+          'info': {'title': 't', 'version': '1'},
+        }),
+        ['#'],
+      );
+    });
+
+    test('responses are optional in 3.1 only', () {
+      Map<String, Object?> doc(String version) => {
+        'openapi': version,
+        'info': {'title': 't', 'version': '1'},
+        'paths': {
+          '/a': {
+            'get': {'operationId': 'a'},
+          },
+        },
+      };
+      expect(pointers(doc('3.1.0')), isEmpty);
+      expect(pointers(doc('3.0.3')), ['#/paths/~1a/get/responses']);
+    });
+
+    test('mutualTLS security schemes', () {
+      final map = {
+        'openapi': '3.1.0',
+        'info': {'title': 't', 'version': '1'},
+        'components': {
+          'securitySchemes': {
+            'mtls': {'type': 'mutualTLS', 'description': 'Client certs'},
+          },
+        },
+        'security': [
+          {'mtls': <String>[]},
+        ],
+      };
+      final doc = _doc(map);
+      expect(
+        doc.components!.securitySchemes['mtls']!.type,
+        APISecuritySchemeType.mutualTLS,
+      );
+      expect(doc.validate(), isEmpty);
+      expect(_encoded(doc), map);
+    });
+
+    test('path item refs: templates are checked, sharing is reported', () {
+      expect(
+        pointers({
+          'openapi': '3.1.0',
+          'info': {'title': 't', 'version': '1'},
+          'paths': {
+            '/a/{id}': {r'$ref': '#/components/pathItems/Item'},
+            '/b': {r'$ref': '#/components/pathItems/Item'},
+          },
+          'components': {
+            'pathItems': {
+              'Item': {
+                'get': {'operationId': 'get'},
+              },
+            },
+          },
+        }),
+        ['#/paths/~1a~1{id}/get/parameters', '#/paths/~1b/\$ref'],
       );
     });
   });

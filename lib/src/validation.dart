@@ -24,6 +24,9 @@ const _flowNames = {
 final class _Validator {
   final issues = <OpenApiFormatException>[];
 
+  /// Whether the document is OpenAPI 3.1, where some fields are optional.
+  bool _isOpenApi31 = false;
+
   /// Security schemes declared in components, by name, for checking
   /// requirements. Null if the document has no components.
   Map<String, APISecuritySchemeType?>? _schemes;
@@ -63,6 +66,17 @@ final class _Validator {
   void document(APIDocument d) {
     const p = '#';
     _required(p, 'openapi', d.version);
+    _isOpenApi31 = d.isOpenApi31;
+    if (_isOpenApi31 &&
+        !d.hasPaths &&
+        d.components == null &&
+        d.webhooks == null) {
+      _issue(
+        p,
+        'An OpenAPI 3.1 document must have at least one of paths, '
+        'components or webhooks.',
+      );
+    }
     final version = d.version;
     if (version != null && !_supportedVersion.hasMatch(version)) {
       _issue(
@@ -80,6 +94,7 @@ final class _Validator {
     );
     _servers(p, d.servers);
     final paths = appendPointer(p, 'paths');
+    final referencedFrom = <Uri, String>{};
     d.paths.forEach((key, path) {
       if (key.startsWith('x-')) {
         return;
@@ -88,8 +103,28 @@ final class _Validator {
       if (!key.startsWith('/')) {
         _issue(pp, "Path '$key' must begin with '/'.");
       }
-      if (!_isRef(path)) {
+      final ref = path.referenceURI;
+      if (ref == null) {
         _path(pp, path, template: key);
+        return;
+      }
+      // The path item is checked where it is defined, but only here is
+      // its template known.
+      path.operations.forEach((method, operation) {
+        _template(appendPointer(pp, method), key, [
+          ...path.parameters,
+          ...operation.parameters,
+        ]);
+      });
+      final other = referencedFrom[ref];
+      if (other == null) {
+        referencedFrom[ref] = key;
+      } else if (path.operations.values.any((o) => o.id != null)) {
+        _issue(
+          appendPointer(pp, r'$ref'),
+          "Path item '#${ref.path}' is also used by path '$other', so its "
+          'operationIds are not unique.',
+        );
       }
     });
     final webhooks = d.webhooks;
@@ -310,7 +345,9 @@ final class _Validator {
       _requestBody(appendPointer(p, 'requestBody'), body);
     }
     final rp = appendPointer(p, 'responses');
-    if (operation.responses.keys.every((key) => key.startsWith('x-'))) {
+    // OpenAPI 3.1 no longer requires responses.
+    if (!_isOpenApi31 &&
+        operation.responses.keys.every((key) => key.startsWith('x-'))) {
       _issue(rp, 'An operation must have at least one response.');
     }
     for (final key in operation.responses.keys) {
@@ -509,6 +546,8 @@ final class _Validator {
         });
       case APISecuritySchemeType.openIdConnect:
         _required(p, 'openIdConnectUrl', scheme.connectURL);
+      case APISecuritySchemeType.mutualTLS:
+        break;
     }
   }
 }

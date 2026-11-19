@@ -202,7 +202,7 @@ void main() {
               },
               'oidc': {'type': 'openIdConnect'},
               'untyped': <String, dynamic>{},
-              'future': {'type': 'mutualTLS'},
+              'future': {'type': 'someFutureType'},
               'no flows': {'type': 'oauth2'},
             },
           },

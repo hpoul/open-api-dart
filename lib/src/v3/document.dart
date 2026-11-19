@@ -203,7 +203,10 @@ final class APIDocument extends APIObject {
   ///
   /// Paths come in map order (document order when decoded); within a path,
   /// methods come in the fixed order get, put, post, delete, options, head,
-  /// patch, trace. `x-` extension keys in [paths] are skipped. This is a
+  /// patch, trace. `x-` extension keys in [paths] are skipped. A path item
+  /// that is a `$ref` yields the operations of its target, so a target
+  /// used by several paths yields the same [APIOperation]s for each (and
+  /// `validate()` reports it). This is a
   /// lazy iterable: each iteration, including `.length`, walks the paths
   /// again.
   ///
@@ -263,6 +266,12 @@ final class APIDocument extends APIObject {
   /// The default `$schema` for the schemas in this document (OpenAPI 3.1).
   String? jsonSchemaDialect;
 
+  /// Whether the document has `paths`: a non-empty [paths], or `paths`
+  /// in the decoded input. OpenAPI 3.1 documents may leave them out.
+  bool get hasPaths => paths.isNotEmpty || _decodedPaths;
+
+  bool _decodedPaths = false;
+
   /// Whether [version] is an OpenAPI 3.1 version (`3.1.x`).
   bool get isOpenApi31 => version?.startsWith('3.1.') ?? false;
 
@@ -298,6 +307,7 @@ final class APIDocument extends APIObject {
       () => APIServerDescription.empty(),
     );
     paths = object.decodeObjectMap('paths', () => APIPath()) ?? {};
+    _decodedPaths = object.rawValue('paths') != null;
     webhooks = object.decodeObjectMap('webhooks', () => APIPath());
     components = object.decodeObject('components', () => APIComponents());
     security = object.decodeObjects(
@@ -380,7 +390,8 @@ enum _Node {
     data => _Node.data,
     object || link => switch (key) {
       'components' => _Node.components,
-      'paths' || 'responses' || 'webhooks' => _Node.extensibleMap,
+      'paths' || 'responses' => _Node.extensibleMap,
+      'webhooks' => _Node.nameMap,
       'links' => _Node.linkMap,
       'callbacks' => _Node.callbackMap,
       _ when APIDocument._stringMapFields.contains(key) => _Node.data,
