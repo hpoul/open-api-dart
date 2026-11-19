@@ -13,6 +13,12 @@ import 'package:open_api_forked/src/v3/server.dart';
 final class APIOperation extends APIObject {
   APIOperation.empty();
 
+  @override
+  Map<String, Object?> get toStringFields => {
+    'operationId': id,
+    'responses': responses,
+  };
+
   APIOperation(
     this.id,
     Map<String, APIResponse>? responses, {

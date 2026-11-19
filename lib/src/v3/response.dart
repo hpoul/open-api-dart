@@ -7,6 +7,12 @@ import 'package:open_api_forked/src/v3/schema.dart';
 /// Describes a single response from an API Operation, including design-time, static links to operations based on the response.
 final class APIResponse extends APIObject {
   APIResponse.empty();
+
+  @override
+  Map<String, Object?> get toStringFields => {
+    'description': description,
+    'content': content,
+  };
   APIResponse(
     this.description, {
     Map<String, APIMediaType>? content,

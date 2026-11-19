@@ -7,6 +7,12 @@ import 'package:open_api_forked/src/object.dart';
 final class APIInfo extends APIObject {
   APIInfo.empty();
 
+  @override
+  Map<String, Object?> get toStringFields => {
+    'title': title,
+    'version': version,
+  };
+
   /// Creates empty metadata for specification.
   APIInfo(
     this.title,
@@ -82,6 +88,9 @@ final class APIContact extends APIObject {
   APIContact({this.name, this.url, this.email});
   APIContact.empty();
 
+  @override
+  Map<String, Object?> get toStringFields => {'name': name};
+
   /// The identifying name of the contact person/organization.
   String? name;
 
@@ -120,6 +129,9 @@ final class APILicense extends APIObject {
   APILicense.empty();
   APILicense(this.name, {this.url});
 
+  @override
+  Map<String, Object?> get toStringFields => {'name': name};
+
   /// The license name used for the API.
   ///
   /// REQUIRED.
@@ -156,6 +168,9 @@ final class APILicense extends APIObject {
 /// It is not mandatory to have a [APITag] per tag defined in the [APIOperation] instances.
 final class APITag extends APIObject {
   APITag.empty();
+
+  @override
+  Map<String, Object?> get toStringFields => {'name': name};
 
   APITag(this.name, {this.description});
 

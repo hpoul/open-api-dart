@@ -60,6 +60,13 @@ abstract final class APIParameterLocationCodec {
 final class APIParameter extends APIObject {
   APIParameter.empty();
 
+  @override
+  Map<String, Object?> get toStringFields => {
+    'name': name,
+    'in': location?.jsonValue,
+    'required': isRequired ? true : null,
+  };
+
   APIParameter(
     this.name,
     this.location, {

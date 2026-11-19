@@ -7,6 +7,9 @@ import 'package:open_api_forked/src/v3/schema.dart';
 final class APIRequestBody extends APIObject {
   APIRequestBody.empty();
 
+  @override
+  Map<String, Object?> get toStringFields => {'content': content};
+
   APIRequestBody(this.content, {this.description, this.isRequired = false});
 
   APIRequestBody.schema(

@@ -3,6 +3,7 @@ import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/components.dart';
 import 'package:open_api_forked/src/v3/metadata.dart';
+import 'package:open_api_forked/src/v3/operation.dart';
 import 'package:open_api_forked/src/v3/path.dart';
 import 'package:open_api_forked/src/v3/security.dart';
 import 'package:open_api_forked/src/v3/server.dart';
@@ -12,6 +13,14 @@ import 'package:open_api_forked/src/validation.dart';
 final class APIDocument extends APIObject {
   /// Creates an empty specification.
   APIDocument();
+
+  @override
+  Map<String, Object?> get toStringFields => {
+    'openapi': version,
+    'title': info?.title,
+    'version': info?.version,
+    'paths': paths.length,
+  };
 
   /// Creates a specification from decoded JSON or YAML document object.
   ///
@@ -132,6 +141,39 @@ final class APIDocument extends APIObject {
   /// `$ref`s are not followed: a referenced object is checked where it is
   /// defined.
   List<OpenApiFormatException> validate() => validateDocument(this);
+
+  /// Every operation in [paths], with its path and method.
+  ///
+  /// Paths come in map order (document order when decoded); within a path,
+  /// methods come in the fixed order get, put, post, delete, options, head,
+  /// patch, trace. `x-` extension keys in [paths] are skipped. This is a
+  /// lazy iterable: each iteration, including `.length`, walks the paths
+  /// again.
+  ///
+  /// ```dart
+  /// for (final (:path, :method, :operation, pathItem: _) in doc.operations) {
+  ///   print('$method $path ${operation.id}');
+  /// }
+  /// ```
+  Iterable<
+    ({String path, APIPath pathItem, String method, APIOperation operation})
+  >
+  get operations sync* {
+    for (final MapEntry(key: path, value: pathItem) in paths.entries) {
+      if (path.startsWith('x-')) {
+        continue;
+      }
+      for (final MapEntry(key: method, value: operation)
+          in pathItem.operations.entries) {
+        yield (
+          path: path,
+          pathItem: pathItem,
+          method: method,
+          operation: operation,
+        );
+      }
+    }
+  }
 
   /// This string MUST be the semantic version number of the OpenAPI Specification version that the OpenAPI document uses.
   ///

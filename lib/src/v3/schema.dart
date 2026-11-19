@@ -18,6 +18,20 @@ final class APISchemaObject extends APIObject {
   APISchemaObject();
   APISchemaObject.empty();
 
+  @override
+  Map<String, Object?> get toStringFields => {
+    'type': type?.jsonValue,
+    'format': format,
+    'nullable': (isNullable ?? false) ? true : null,
+    'enum': enumerated?.length,
+    'properties': properties,
+    'additionalProperties': additionalPropertyPolicy,
+    'items': items,
+    'allOf': allOf,
+    'oneOf': oneOf,
+    'anyOf': anyOf,
+  };
+
   APISchemaObject.string({this.format}) : type = APIType.string;
   APISchemaObject.number() : type = APIType.number;
   APISchemaObject.integer() : type = APIType.integer;

@@ -45,6 +45,13 @@ abstract final class APISecuritySchemeTypeCodec {
 final class APISecurityScheme extends APIObject {
   APISecurityScheme();
 
+  @override
+  Map<String, Object?> get toStringFields => {
+    'type': type?.jsonValue,
+    'scheme': scheme,
+    'name': name,
+  };
+
   APISecurityScheme.empty();
 
   APISecurityScheme.http(this.scheme) : type = APISecuritySchemeType.http;
@@ -310,6 +317,9 @@ final class APISecurityRequirement extends APIObject {
   ///
   /// If the security scheme is of type [APISecuritySchemeType.oauth2] or [APISecuritySchemeType.openIdConnect], then the value is a list of scope names required for the execution. For other security scheme types, the array MUST be empty.
   Map<String, List<String>> requirements = {};
+
+  @override
+  Map<String, Object?> get toStringFields => {'requirements': requirements};
 
   @override
   void encode(KeyedArchive object) {

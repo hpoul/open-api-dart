@@ -8,6 +8,9 @@ import 'package:open_api_forked/src/v3/parameter.dart';
 /// An [APIPath] MAY be empty, due to ACL constraints. The path itself is still exposed to the documentation viewer but they will not know which operations and parameters are available.
 final class APIPath extends APIObject {
   APIPath.empty();
+
+  @override
+  Map<String, Object?> get toStringFields => {'operations': operations};
   APIPath({
     this.summary,
     this.description,
