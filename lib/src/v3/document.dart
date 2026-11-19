@@ -48,9 +48,7 @@ final class APIDocument extends APIObject {
 
   /// Fields whose value is a map from names to OpenAPI objects.
   static const _nameMapFields = {
-    'paths',
     'schemas',
-    'responses',
     'parameters',
     'examples',
     'requestBodies',
@@ -146,6 +144,33 @@ final class APIDocument extends APIObject {
         }
         target = _resolvePointer(root, next);
       }
+      // A reference into free-form data, such as shared definitions under
+      // an `x-` key, makes that data an object, whose own references are
+      // resolved too, so check them.
+      final segments = Uri.parse(Uri.parse(ref).fragment).pathSegments;
+      if (segments.any(
+        (s) => s.startsWith('x-') || _freeFormFields.contains(s),
+      )) {
+        _checkAllReferences(root, _resolvePointer(root, ref), ref);
+      }
+    }
+  }
+
+  /// Checks every `$ref` in [node], whatever its position.
+  static void _checkAllReferences(
+    Map<String, dynamic> root,
+    Object? node,
+    String pointer,
+  ) {
+    if (node is List) {
+      for (final (i, item) in node.indexed) {
+        _checkAllReferences(root, item, appendPointer(pointer, i));
+      }
+    } else if (node is Map) {
+      _checkReference(root, node, pointer);
+      node.forEach((key, value) {
+        _checkAllReferences(root, value, appendPointer(pointer, '$key'));
+      });
     }
   }
 
@@ -311,11 +336,18 @@ enum _Node {
   /// An OpenAPI object, such as a schema or an operation.
   object,
 
+  /// The Components Object.
+  components,
+
   /// A Link Object.
   link,
 
   /// A map from names to OpenAPI objects, such as `properties`.
   nameMap,
+
+  /// A map from names to OpenAPI objects that may also hold `x-`
+  /// extensions: the Paths, Responses and Callback Objects.
+  extensibleMap,
 
   /// A map from names to Link Objects.
   linkMap,
@@ -328,16 +360,23 @@ enum _Node {
 
   /// The kind of the value for [key] in a map of this kind.
   _Node child(String key, Object? value) => switch (this) {
-    nameMap => _Node.object,
+    _ when value is! Map => _Node.object,
+    nameMap || extensibleMap => _Node.object,
+    components => switch (key) {
+      'links' => _Node.linkMap,
+      'callbacks' => _Node.callbackMap,
+      _ => _Node.nameMap,
+    },
     linkMap => _Node.link,
-    callbackMap => _Node.nameMap,
+    callbackMap => _Node.extensibleMap,
     data => _Node.data,
     object || link => switch (key) {
-      'links' when value is Map => _Node.linkMap,
-      'callbacks' when value is Map => _Node.callbackMap,
+      'components' => _Node.components,
+      'paths' || 'responses' => _Node.extensibleMap,
+      'links' => _Node.linkMap,
+      'callbacks' => _Node.callbackMap,
       _ when APIDocument._stringMapFields.contains(key) => _Node.data,
-      _ when APIDocument._nameMapFields.contains(key) && value is Map =>
-        _Node.nameMap,
+      _ when APIDocument._nameMapFields.contains(key) => _Node.nameMap,
       _ => _Node.object,
     },
   };
@@ -347,10 +386,12 @@ enum _Node {
     object =>
       key.startsWith('x-') ||
           APIDocument._freeFormFields.contains(key) ||
-          // JSON Schema's `examples` (a list), which 3.0 does not have.
+          // `examples` as a list, as in JSON Schema or converted Swagger 2
+          // documents, which 3.0 does not have.
           (key == 'examples' && value is List),
     link =>
       key.startsWith('x-') || APIDocument._freeFormLinkFields.contains(key),
+    components || extensibleMap => key.startsWith('x-'),
     nameMap || linkMap || callbackMap || data => false,
   };
 }

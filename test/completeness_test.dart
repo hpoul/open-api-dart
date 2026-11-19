@@ -353,17 +353,114 @@ void main() {
       expect(APIDocument.fromMap(spec).components!.schemas['Pet'], isNotNull);
     });
 
-    test('a reference into free-form data is a format error', () {
+    test('a reference into an x- extension resolves', () {
+      final spec = _spec();
+      spec['x-defs'] = {
+        'S': {'type': 'string'},
+        'R': {r'$ref': '#/components/schemas/Pet'},
+      };
+      spec['components']['x-shared'] = {
+        'P': {
+          'name': 'q',
+          'in': 'query',
+          'schema': {'type': 'string'},
+        },
+      };
+      spec['components']['schemas']['A'] = {r'$ref': '#/x-defs/S'};
+      spec['components']['schemas']['B'] = {r'$ref': '#/x-defs/R'};
+      spec['components']['parameters'] = {
+        'Q': {r'$ref': '#/components/x-shared/P'},
+      };
+      final doc = APIDocument.fromMap(spec);
+      final schemas = doc.components!.schemas;
+      expect(schemas['A']!.type, APIType.string);
+      expect(schemas['B']!.discriminator!.propertyName, 'petType');
+      expect(doc.components!.parameters['Q']!.name, 'q');
+      expect(doc.extensions['x-defs'], spec['x-defs']);
+      expect(json.decode(json.encode(doc.asMap())), spec);
+    });
+
+    test('references inside a referenced x- extension are checked', () {
+      final spec = _spec();
+      spec['x-defs'] = {
+        'S': {
+          'items': {r'$ref': 'other.json#/S'},
+        },
+      };
+      spec['components']['schemas']['A'] = {r'$ref': '#/x-defs/S'};
+      expect(
+        () => APIDocument.fromMap(spec),
+        throwsA(
+          isA<OpenApiFormatException>().having(
+            (e) => e.pointer,
+            'pointer',
+            '#/x-defs/S/items/\$ref',
+          ),
+        ),
+      );
+    });
+
+    test('x- extensions in paths, responses and callbacks are data', () {
+      final spec = _spec();
+      final path = spec['paths']['/pets/{id}'] as Map;
+      spec['paths']['x-ext'] = {
+        'a': {r'$ref': 'http://example.com/x'},
+      };
+      path['get']['responses']['x-r'] = {
+        'a': {r'$ref': 'http://example.com/x'},
+      };
+      path['get']['callbacks'] = {
+        'cb': {
+          'x-c': {
+            'a': {r'$ref': 'http://example.com/x'},
+          },
+          r'{$request.body#/url}': {
+            'post': {
+              'responses': {
+                '200': {'description': 'ok'},
+              },
+            },
+          },
+        },
+      };
+      final doc = APIDocument.fromMap(spec);
+      expect(doc.paths.keys, ['/pets/{id}']);
+      final op = doc.paths['/pets/{id}']!.operations['get']!;
+      expect(op.responses.keys, ['200']);
+      expect(op.callbacks['cb']!.paths.keys, [r'{$request.body#/url}']);
+      expect(doc.validate(), isEmpty);
+    });
+
+    test('non-string keys in free-form data are a format error', () {
       final spec = _spec();
       spec['components']['schemas']['Pet']['example'] = {
-        'a': {'type': 'string'},
-      };
-      spec['components']['schemas']['Ref'] = {
-        r'$ref': '#/components/schemas/Pet/example/a',
+        'a': {2: 'x'},
       };
       expect(
         () => APIDocument.fromMap(spec),
-        throwsA(isA<OpenApiFormatException>()),
+        throwsA(
+          isA<OpenApiFormatException>().having(
+            (e) => e.pointer,
+            'pointer',
+            '#/components/schemas/Pet/example/a/2',
+          ),
+        ),
+      );
+    });
+
+    test('an examples list on a media type is ignored', () {
+      final spec = _spec();
+      spec['paths']['/pets/{id}']['get']['responses']['200']['content']['text/plain']['examples'] =
+          [1];
+      final doc = APIDocument.fromMap(spec);
+      expect(
+        doc
+            .paths['/pets/{id}']!
+            .operations['get']!
+            .responses['200']!
+            .content['text/plain']!
+            .examples,
+        isEmpty,
       );
     });
   });

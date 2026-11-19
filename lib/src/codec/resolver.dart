@@ -1,6 +1,7 @@
 // Originally from package:codable (stable/kernel, BSD-2-Clause), via
 // codable_forked. See LICENSE.
 
+import 'package:open_api_forked/src/codec/free_form.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 
 /// Something that holds `$ref`s to resolve against a document.
@@ -18,8 +19,14 @@ final class ReferenceResolver {
   KeyedArchive? resolve(Uri ref) {
     KeyedArchive? object = document;
     for (final segment in ref.pathSegments) {
-      final next = object?[segment];
-      object = next is KeyedArchive ? next : null;
+      final next = object?.rawValue(segment);
+      object = switch (next) {
+        KeyedArchive() => next,
+        FreeForm() => next.archive(this),
+        // Free-form data in an encoded document.
+        Map() => FreeForm(next, '#').archive(this),
+        _ => null,
+      };
     }
     return object;
   }

@@ -164,12 +164,17 @@ final class KeyedArchive extends Object
   }
 
   dynamic _getValue(String? key) {
-    if (_map.containsKey(key)) {
-      final value = _map[key];
-      return value is FreeForm ? value.value : value;
-    }
+    final value = rawValue(key);
+    return value is FreeForm ? value.value : value;
+  }
 
-    return _objectReference?._getValue(key);
+  /// The value for [key] as stored, with free-form data still wrapped in a
+  /// [FreeForm]. Falls back to the referenced object like [decode].
+  Object? rawValue(String? key) {
+    if (_map.containsKey(key)) {
+      return _map[key] as Object?;
+    }
+    return _objectReference?.rawValue(key);
   }
 
   void _recode() {
@@ -416,6 +421,11 @@ final class KeyedArchive extends Object
     String? key,
     T Function() inflate,
   ) {
+    if (rawValue(key) is FreeForm) {
+      // Data where a map of objects was expected, such as a JSON Schema
+      // `examples` list: ignored.
+      return null;
+    }
     final v = _getValue(key);
     if (v == null) {
       return null;
@@ -425,16 +435,24 @@ final class KeyedArchive extends Object
       throw _typeMismatch(key, v, 'an object');
     }
 
-    return {
-      for (final MapEntry(key: k, value: e) in v.entries)
-        k: e is KeyedArchive
-            ? _decodedObject(e, inflate)!
-            : throw OpenApiFormatException(
-                'Expected an object, found ${_describe(e)}.',
-                pointer: appendPointer(pointerTo(key), k),
-                source: e,
-              ),
-    };
+    final result = <String, T>{};
+    for (final k in v.keys) {
+      final e = v.rawValue(k);
+      if (e is FreeForm) {
+        // An extension in a map of objects (`paths`, `responses`, a
+        // callback): not one of the objects.
+        continue;
+      }
+      if (e is! KeyedArchive) {
+        throw OpenApiFormatException(
+          'Expected an object, found ${_describe(e)}.',
+          pointer: appendPointer(pointerTo(key), k),
+          source: e,
+        );
+      }
+      result[k] = _decodedObject(e, inflate)!;
+    }
+    return result;
   }
 
   /* encode */

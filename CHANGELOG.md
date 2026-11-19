@@ -141,8 +141,14 @@
   rejected, or crash with a `TypeError`), and maps in there are
   `Map<String, dynamic>`. Conversely, a `$ref` under a name such as
   `default` in `examples`, `properties` or `links` is now checked like any
-  other reference instead of being skipped. A JSON Schema `examples` list
-  on a schema (not part of 3.0) is ignored.
+  other reference instead of being skipped. An `examples` list (JSON
+  Schema, or converted Swagger 2) is ignored.
+- A `$ref` may still point into free-form data, such as shared definitions
+  under an `x-` key; that data is then read as an object, and its own
+  `$ref`s are checked and resolved.
+- `x-` extensions directly in `paths`, operation `responses` and callbacks
+  are ignored instead of being decoded as a path item or response (which
+  failed for anything but an object, and lost its content).
 - `validate()` also reports a missing `externalDocs.url` (in schemas too)
   or discriminator `propertyName`, `example` together with `examples`, an
   example with both `value` and `externalValue`, a link without exactly one
