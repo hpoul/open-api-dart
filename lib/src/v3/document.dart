@@ -1,3 +1,4 @@
+import 'package:open_api_forked/src/v3/external_docs.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
@@ -35,13 +36,7 @@ final class APIDocument extends APIObject {
 
   /// Keys whose values are free-form data, not OpenAPI objects. A `$ref`
   /// in there is just data, so it is not checked.
-  static const _freeFormKeys = {
-    'example',
-    'examples',
-    'default',
-    'enum',
-    'value',
-  };
+  static const _freeFormKeys = {'example', 'default', 'enum', 'value'};
 
   /// Validates every `$ref` in [node] before [KeyedArchive] resolves them,
   /// so that bad references fail with a clear message instead of a
@@ -212,6 +207,9 @@ final class APIDocument extends APIObject {
     return KeyedArchive.archive(this, allowReferences: true);
   }
 
+  /// Additional external documentation.
+  APIExternalDocumentation? externalDocs;
+
   @override
   void decode(KeyedArchive object) {
     super.decode(object);
@@ -229,6 +227,10 @@ final class APIDocument extends APIObject {
       () => APISecurityRequirement.empty(),
     );
     tags = object.decodeObjects('tags', () => APITag.empty()) ?? [];
+    externalDocs = object.decodeObject(
+      'externalDocs',
+      () => APIExternalDocumentation.empty(),
+    );
   }
 
   @override
@@ -248,5 +250,6 @@ final class APIDocument extends APIObject {
     object.encodeObject('components', components);
     object.encodeObjects('security', security);
     object.encodeObjects('tags', tags, omitEmpty: true);
+    object.encodeObject('externalDocs', externalDocs);
   }
 }

@@ -1,3 +1,6 @@
+import 'package:open_api_forked/src/v3/xml.dart';
+import 'package:open_api_forked/src/v3/discriminator.dart';
+import 'package:open_api_forked/src/v3/external_docs.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/types.dart';
@@ -250,8 +253,6 @@ final class APISchemaObject extends APIObject {
     _nullable = n;
   }
 
-  // APIDiscriminator discriminator;
-
   bool? get isReadOnly => _readOnly ?? false;
 
   set isReadOnly(bool? n) {
@@ -274,6 +275,19 @@ final class APISchemaObject extends APIObject {
   bool? _readOnly;
   bool? _writeOnly;
   bool? _deprecated;
+
+  /// Additional external documentation.
+  APIExternalDocumentation? externalDocs;
+
+  /// Tells which schema in `oneOf`/`anyOf` (or which `allOf` subtype) a
+  /// payload matches.
+  APIDiscriminator? discriminator;
+
+  /// How the property is represented in XML.
+  APIXml? xml;
+
+  /// An example of an instance of this schema, kept as decoded.
+  Object? example;
 
   @override
   void decode(KeyedArchive object) {
@@ -336,6 +350,16 @@ final class APISchemaObject extends APIObject {
     _readOnly = object.decode('readOnly');
     _writeOnly = object.decode('writeOnly');
     _deprecated = object.decode('deprecated');
+    externalDocs = object.decodeObject(
+      'externalDocs',
+      () => APIExternalDocumentation.empty(),
+    );
+    discriminator = object.decodeObject(
+      'discriminator',
+      () => APIDiscriminator.empty(),
+    );
+    xml = object.decodeObject('xml', () => APIXml.empty());
+    example = object.decode<Object?>('example');
   }
 
   @override
@@ -389,5 +413,9 @@ final class APISchemaObject extends APIObject {
     object.encode('readOnly', _readOnly);
     object.encode('writeOnly', _writeOnly);
     object.encode('deprecated', _deprecated);
+    object.encodeObject('externalDocs', externalDocs);
+    object.encodeObject('discriminator', discriminator);
+    object.encodeObject('xml', xml);
+    object.encode('example', example);
   }
 }

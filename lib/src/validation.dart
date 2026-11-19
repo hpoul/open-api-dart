@@ -83,10 +83,12 @@ final class _Validator {
       _components(appendPointer(p, 'components'), components);
     }
     _security(p, d.security);
+    _externalDocs(p, d.externalDocs);
     final tagNames = <String>{};
     for (final (i, tag) in d.tags.indexed) {
       final tp = appendPointer(appendPointer(p, 'tags'), i);
       _required(tp, 'name', tag.name);
+      _externalDocs(tp, tag.externalDocs);
       final name = tag.name;
       if (name != null && !tagNames.add(name)) {
         _issue(appendPointer(tp, 'name'), "Duplicate tag name '$name'.");
@@ -132,11 +134,13 @@ final class _Validator {
     if (servers == null) {
       return;
     }
-    _eachIndexed(appendPointer(p, 'servers'), servers, (p, server) {
-      _required(p, 'url', server.url);
-      _each(appendPointer(p, 'variables'), server.variables, (p, variable) {
-        _required(p, 'default', variable.defaultValue);
-      });
+    _eachIndexed(appendPointer(p, 'servers'), servers, _server);
+  }
+
+  void _server(String p, APIServerDescription server) {
+    _required(p, 'url', server.url);
+    _each(appendPointer(p, 'variables'), server.variables, (p, variable) {
+      _required(p, 'default', variable.defaultValue);
     });
   }
 
@@ -247,6 +251,7 @@ final class _Validator {
       );
     }
     _content(p, parameter.content);
+    _examples(p, parameter.example, parameter.examples);
   }
 
   void _operation(String p, APIOperation operation) {
@@ -284,6 +289,40 @@ final class _Validator {
     _each(appendPointer(p, 'callbacks'), operation.callbacks, _callback);
     _security(p, operation.security);
     _servers(p, operation.servers);
+    _externalDocs(p, operation.externalDocs);
+  }
+
+  void _externalDocs(String p, APIExternalDocumentation? docs) {
+    if (docs != null && !_isRef(docs)) {
+      _required(appendPointer(p, 'externalDocs'), 'url', docs.url);
+    }
+  }
+
+  /// Checks `example`/`examples` of a parameter, header or media type.
+  void _examples(String p, Object? example, Map<String, APIExample> examples) {
+    if (example != null && examples.isNotEmpty) {
+      _issue(p, "'example' and 'examples' are mutually exclusive.");
+    }
+    _each(appendPointer(p, 'examples'), examples, _example);
+  }
+
+  void _example(String p, APIExample example) {
+    if (example.value != null && example.externalValue != null) {
+      _issue(p, "'value' and 'externalValue' are mutually exclusive.");
+    }
+  }
+
+  void _link(String p, APILink link) {
+    if ((link.operationRef == null) == (link.operationId == null)) {
+      _issue(
+        p,
+        "A link must have exactly one of 'operationRef' and 'operationId'.",
+      );
+    }
+    final server = link.server;
+    if (server != null && !_isRef(server)) {
+      _server(appendPointer(p, 'server'), server);
+    }
   }
 
   void _requestBody(String p, APIRequestBody body) {
@@ -297,12 +336,17 @@ final class _Validator {
     _required(p, 'description', response.description);
     _each(appendPointer(p, 'headers'), response.headers, _header);
     _content(p, response.content);
+    _each(appendPointer(p, 'links'), response.links, _link);
   }
 
-  void _header(String p, APIHeader header) => _content(p, header.content);
+  void _header(String p, APIHeader header) {
+    _content(p, header.content);
+    _examples(p, header.example, header.examples);
+  }
 
   void _content(String p, Map<String, APIMediaType> content) {
     _each(appendPointer(p, 'content'), content, (p, mediaType) {
+      _examples(p, mediaType.example, mediaType.examples);
       _each(appendPointer(p, 'encoding'), mediaType.encoding, (p, encoding) {
         _each(appendPointer(p, 'headers'), encoding.headers, _header);
       });
@@ -331,6 +375,8 @@ final class _Validator {
     keys('headers', c.headers);
     keys('securitySchemes', c.securitySchemes);
     keys('callbacks', c.callbacks);
+    keys('examples', c.examples);
+    keys('links', c.links);
 
     _each(appendPointer(p, 'responses'), c.responses, _response);
     _each(appendPointer(p, 'parameters'), c.parameters, _parameter);
@@ -338,6 +384,8 @@ final class _Validator {
     _each(appendPointer(p, 'headers'), c.headers, _header);
     _each(appendPointer(p, 'securitySchemes'), c.securitySchemes, _scheme);
     _each(appendPointer(p, 'callbacks'), c.callbacks, _callback);
+    _each(appendPointer(p, 'examples'), c.examples, _example);
+    _each(appendPointer(p, 'links'), c.links, _link);
   }
 
   void _scheme(String p, APISecurityScheme scheme) {

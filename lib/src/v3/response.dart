@@ -1,3 +1,4 @@
+import 'package:open_api_forked/src/v3/link.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/header.dart';
@@ -46,9 +47,6 @@ final class APIResponse extends APIObject {
   /// The key is a media type or media type range and the value describes it. For responses that match multiple keys, only the most specific key is applicable. e.g. text/plain overrides text/*
   Map<String, APIMediaType> content = {};
 
-  // Currently missing:
-  // links
-
   /// Adds a [header] to [headers] for [name].
   ///
   /// If the key does not exist in [headers], [header] is added for the key.
@@ -86,6 +84,9 @@ final class APIResponse extends APIObject {
     }
   }
 
+  /// Operations that can be reached from this response, by a short name.
+  Map<String, APILink> links = {};
+
   @override
   void decode(KeyedArchive object) {
     super.decode(object);
@@ -93,6 +94,7 @@ final class APIResponse extends APIObject {
     description = object.decode('description');
     content = object.decodeObjectMap('content', () => APIMediaType()) ?? {};
     headers = object.decodeObjectMap('headers', () => APIHeader()) ?? {};
+    links = object.decodeObjectMap('links', () => APILink.empty()) ?? {};
   }
 
   @override
@@ -108,5 +110,6 @@ final class APIResponse extends APIObject {
     object.encode('description', description);
     object.encodeObjectMap('headers', headers, omitEmpty: true);
     object.encodeObjectMap('content', content, omitEmpty: true);
+    object.encodeObjectMap('links', links, omitEmpty: true);
   }
 }

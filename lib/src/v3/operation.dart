@@ -1,3 +1,4 @@
+import 'package:open_api_forked/src/v3/external_docs.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/callback.dart';
@@ -133,6 +134,9 @@ final class APIOperation extends APIObject {
     });
   }
 
+  /// Additional external documentation.
+  APIExternalDocumentation? externalDocs;
+
   @override
   void decode(KeyedArchive object) {
     super.decode(object);
@@ -159,6 +163,10 @@ final class APIOperation extends APIObject {
       'servers',
       () => APIServerDescription.empty(),
     );
+    externalDocs = object.decodeObject(
+      'externalDocs',
+      () => APIExternalDocumentation.empty(),
+    );
   }
 
   @override
@@ -176,5 +184,6 @@ final class APIOperation extends APIObject {
     object.encode('deprecated', isDeprecated);
     object.encodeObjects('security', security);
     object.encodeObjects('servers', servers);
+    object.encodeObject('externalDocs', externalDocs);
   }
 }

@@ -21,8 +21,7 @@
 - **Breaking:** `APIHeader` is its own class instead of an `APIParameter`
   subclass, so it no longer has `name` or `location`. It has the Header
   Object fields: `description`, `isRequired`, `isDeprecated`, `style`,
-  `explode`, `schema`, `content`, and `example`/`examples` kept as decoded
-  data. This fixes
+  `explode`, `schema`, `content`, `example` and `examples`. This fixes
   re-encoding a decoded document with headers, which threw because the
   header had no `name`/`in`.
 - **Breaking:** `APIServerDescription.url` is a `String` instead of a `Uri`.
@@ -118,6 +117,24 @@
   `APISchemaObject($ref: #/components/schemas/Pet)`, instead of
   `Instance of '...'`. Some types print only `TypeName()`; nesting is cut
   off after a few levels, so cycles built in code don't overflow.
+- The rest of OpenAPI 3.0 is modelled, so these fields are no longer
+  dropped when a document is decoded and encoded again:
+  - New `APIExternalDocumentation` as `externalDocs` on `APIDocument`,
+    `APIOperation`, `APITag` and `APISchemaObject`.
+  - New `APIDiscriminator` (`discriminator`), `APIXml` (`xml`) and
+    `example` on `APISchemaObject`.
+  - New `APIExample`: `example`/`examples` on `APIParameter` and
+    `APIMediaType`, and `APIComponents.examples`.
+  - New `APILink`: `APIResponse.links` and `APIComponents.links`.
+  - `resolveUri` handles `#/components/examples/...` and
+    `#/components/links/...`.
+- **Breaking:** `APIHeader.examples` is a `Map<String, APIExample>` (empty
+  by default) instead of decoded data, and `$ref`s inside `examples` are
+  now checked and resolved like other references. An Example Object's
+  `value` is still free-form.
+- `validate()` also reports a missing `externalDocs.url`, `example` together
+  with `examples`, an example with both `value` and `externalValue`, and a
+  link without exactly one of `operationRef` and `operationId`.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 

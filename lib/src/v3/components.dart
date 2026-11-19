@@ -1,7 +1,9 @@
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/callback.dart';
+import 'package:open_api_forked/src/v3/example.dart';
 import 'package:open_api_forked/src/v3/header.dart';
+import 'package:open_api_forked/src/v3/link.dart';
 import 'package:open_api_forked/src/v3/parameter.dart';
 import 'package:open_api_forked/src/v3/request_body.dart';
 import 'package:open_api_forked/src/v3/response.dart';
@@ -25,7 +27,8 @@ final class APIComponents extends APIObject {
   /// An object to hold reusable [APIParameter?].
   Map<String, APIParameter> parameters = {};
 
-  //Map<String, APIExample> examples = {};
+  /// An object to hold reusable [APIExample]s.
+  Map<String, APIExample> examples = {};
 
   /// An object to hold reusable [APIRequestBody?].
   Map<String, APIRequestBody> requestBodies = {};
@@ -36,7 +39,8 @@ final class APIComponents extends APIObject {
   /// An object to hold reusable [APISecurityScheme?].
   Map<String, APISecurityScheme> securitySchemes = {};
 
-  //Map<String, APILink> links = {};
+  /// An object to hold reusable [APILink]s.
+  Map<String, APILink> links = {};
 
   /// An object to hold reusable [APICallback?].
   Map<String, APICallback> callbacks = {};
@@ -81,6 +85,12 @@ final class APIComponents extends APIObject {
       case 'callbacks':
         namedMap = callbacks;
         break;
+      case 'examples':
+        namedMap = examples;
+        break;
+      case 'links':
+        namedMap = links;
+        break;
       default:
         throw ArgumentError(
           "Invalid reference URI: component type '${segments[1]}' does not exist.",
@@ -108,7 +118,8 @@ final class APIComponents extends APIObject {
         object.decodeObjectMap('responses', () => APIResponse.empty()) ?? {};
     parameters =
         object.decodeObjectMap('parameters', () => APIParameter.empty()) ?? {};
-    //    examples = object.decodeObjectMap("examples", () => APIExample());
+    examples =
+        object.decodeObjectMap('examples', () => APIExample.empty()) ?? {};
     requestBodies =
         object.decodeObjectMap('requestBodies', () => APIRequestBody.empty()) ??
         {};
@@ -117,7 +128,7 @@ final class APIComponents extends APIObject {
     securitySchemes =
         object.decodeObjectMap('securitySchemes', () => APISecurityScheme()) ??
         {};
-    //    links = object.decodeObjectMap("links", () => APILink());
+    links = object.decodeObjectMap('links', () => APILink.empty()) ?? {};
     callbacks = object.decodeObjectMap('callbacks', () => APICallback()) ?? {};
   }
 
@@ -128,11 +139,11 @@ final class APIComponents extends APIObject {
     object.encodeObjectMap('schemas', schemas, omitEmpty: true);
     object.encodeObjectMap('responses', responses, omitEmpty: true);
     object.encodeObjectMap('parameters', parameters, omitEmpty: true);
-    //    object.encodeObjectMap("examples", examples);
+    object.encodeObjectMap('examples', examples, omitEmpty: true);
     object.encodeObjectMap('requestBodies', requestBodies, omitEmpty: true);
     object.encodeObjectMap('headers', headers, omitEmpty: true);
     object.encodeObjectMap('securitySchemes', securitySchemes, omitEmpty: true);
-    //    object.encodeObjectMap("links", links);
+    object.encodeObjectMap('links', links, omitEmpty: true);
     object.encodeObjectMap('callbacks', callbacks, omitEmpty: true);
   }
 }
