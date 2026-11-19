@@ -35,6 +35,30 @@ void main() {
     expect(APISecuritySchemeType.openIdConnect.jsonValue, 'openIdConnect');
   });
 
+  test('legacy openID decodes as openIdConnect', () {
+    expect(
+      APISecuritySchemeType.fromJson('openID'),
+      APISecuritySchemeType.openIdConnect,
+    );
+    final doc = APIDocument.fromMap({
+      'openapi': '3.0.0',
+      'info': {'title': 'x', 'version': '1'},
+      'paths': <String, dynamic>{},
+      'components': {
+        'securitySchemes': {
+          'oidc': {
+            'type': 'openID',
+            'openIdConnectUrl': 'https://example.com/.well-known/oidc',
+          },
+        },
+      },
+    });
+    final encoded =
+        // ignore: avoid_dynamic_calls
+        doc.asMap()['components']['securitySchemes']['oidc'] as Map;
+    expect(encoded['type'], 'openIdConnect');
+  });
+
   test('unknown and null values decode to null', () {
     expect(APIType.fromJson('null'), isNull);
     expect(APIType.fromJson(null), isNull);
