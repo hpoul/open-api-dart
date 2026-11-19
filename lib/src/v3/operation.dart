@@ -76,16 +76,12 @@ final class APIOperation extends APIObject {
   /// REQUIRED.
   Map<String, APIResponse> responses = {};
 
-  /// Whether the operation has `responses`: a non-empty [responses], or
-  /// `responses` in the decoded input. OpenAPI 3.1 operations may leave
-  /// them out.
-  bool get hasResponses => responses.isNotEmpty || _decodedResponses;
+  /// Whether the operation has `responses`, as it is encoded: a non-empty
+  /// [responses], or any [responses] unless this was decoded from input
+  /// without them. OpenAPI 3.1 operations may leave them out; operations
+  /// built in code always write them, as OpenAPI 3.0 requires.
+  bool get hasResponses => responses.isNotEmpty || !_decodedWithoutResponses;
 
-  bool _decodedResponses = false;
-
-  /// Whether this was decoded from input without `responses`; empty
-  /// [responses] are then left out when encoding. Operations built in code
-  /// always write them, as OpenAPI 3.0 requires.
   bool _decodedWithoutResponses = false;
 
   /// A map of possible out-of band callbacks related to the parent operation.
@@ -165,8 +161,7 @@ final class APIOperation extends APIObject {
     );
     responses =
         object.decodeObjectMap('responses', () => APIResponse.empty()) ?? {};
-    _decodedResponses = object.rawValue('responses') != null;
-    _decodedWithoutResponses = !_decodedResponses;
+    _decodedWithoutResponses = object.rawValue('responses') == null;
     callbacks = object.decodeObjectMap('callbacks', () => APICallback()) ?? {};
     isDeprecated = object.decode('deprecated');
     security = object.decodeObjects(
@@ -193,7 +188,7 @@ final class APIOperation extends APIObject {
     object.encode('operationId', id);
     object.encodeObjects('parameters', parameters, omitEmpty: true);
     object.encodeObject('requestBody', requestBody);
-    if (responses.isNotEmpty || !_decodedWithoutResponses) {
+    if (hasResponses) {
       object.encodeObjectMap('responses', responses);
     }
     object.encodeObjectMap('callbacks', callbacks, omitEmpty: true);

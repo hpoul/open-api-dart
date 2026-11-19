@@ -20,7 +20,7 @@
   path template of a path that is a `$ref`. In 3.1, operations need no
   `responses` (`APIOperation.hasResponses`; an operation decoded without
   them is encoded without them), and security requirements may list role
-  names for any scheme type. A 3.0 document without `paths` is reported.
+  names for any scheme type.
 - **Breaking:** `APISecuritySchemeType` has a new value, `mutualTLS`; a
   `switch` over it without a default needs a case for it.
 

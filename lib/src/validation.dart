@@ -67,9 +67,6 @@ final class _Validator {
     const p = '#';
     _required(p, 'openapi', d.version);
     _isOpenApi31 = d.isOpenApi31;
-    if (!_isOpenApi31 && !d.hasPaths) {
-      _required(p, 'paths', null);
-    }
     if (_isOpenApi31 &&
         !d.hasPaths &&
         d.components == null &&

@@ -400,13 +400,17 @@ void main() {
       expect(pointers(map), ['#/webhooks/empty/post/responses']);
     });
 
-    test('a 3.0 document needs paths', () {
+    test('a 3.1 operation built in code needs a response', () {
+      final doc = APIDocument()
+        ..version = '3.1.0'
+        ..info = APIInfo('t', '1')
+        ..webhooks = {
+          'hook': APIPath(operations: {'post': APIOperation('x', {})}),
+        };
+      expect(doc.webhooks!['hook']!.operations['post']!.hasResponses, isTrue);
       expect(
-        pointers({
-          'openapi': '3.0.3',
-          'info': {'title': 't', 'version': '1'},
-        }),
-        ['#/paths'],
+        [for (final e in doc.validate()) e.pointer],
+        ['#/webhooks/hook/post/responses'],
       );
     });
 
