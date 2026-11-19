@@ -4,6 +4,9 @@ import 'package:open_api_forked/src/codec/keyed_archive.dart';
 /// Base class of every object in an OpenAPI document.
 ///
 /// Subclasses read their fields in [decode] and write them in [encode].
+/// Both take the package's internal `KeyedArchive`; calling or overriding
+/// them from outside this package is not supported. Use
+/// `APIDocument.fromMap` and `asMap()` instead.
 class APIObject {
   /// If this object is a `$ref`, the path of the referenced object, e.g.
   /// `/components/schemas/Pet` for `#/components/schemas/Pet`.

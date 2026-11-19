@@ -31,10 +31,14 @@
 - **Breaking:** `codable_forked` is no longer a dependency. Its decoding code
   lives privately in `lib/src/codec`. `Coding`, `KeyedArchive`, `ListArchive`
   and the `cast` library are no longer exported; `APIObject` no longer extends
-  `Coding` (it keeps `referenceURI`, `extensions`, `decode` and `encode`).
-  Use `APIDocument.fromMap` and `asMap()` to read and write documents.
-- Maps with non-`String`-typed keys (such as YAML maps) inside lists now
-  decode.
+  `Coding`. It keeps `referenceURI` and `extensions`; its `decode` and
+  `encode` take the internal `KeyedArchive`, so calling or overriding them
+  from outside the package is not supported. Use `APIDocument.fromMap` and
+  `asMap()` to read and write documents.
+- Invalid `tags` or `required` lists now throw `TypeError` instead of
+  `FailedCast`.
+- Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
+  decode; their keys must be strings.
 
 ## 3.0.1
 
