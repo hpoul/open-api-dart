@@ -28,10 +28,13 @@ final class APISchemaObject extends APIObject {
     bool any = false,
   }) : type = APIType.object {
     if (ofType != null) {
+      additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.restricted;
       additionalPropertySchema = APISchemaObject()..type = ofType;
     } else if (ofSchema != null) {
+      additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.restricted;
       additionalPropertySchema = ofSchema;
     } else if (any) {
+      additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.freeForm;
     } else {
       throw ArgumentError(
         "Invalid 'APISchemaObject.map' with neither 'ofType', 'any' or 'ofSchema' specified.",
@@ -212,7 +215,15 @@ final class APISchemaObject extends APIObject {
 
   APISchemaObject? items;
   Map<String, APISchemaObject> properties = {};
+
+  /// The schema of additional properties, when [additionalPropertyPolicy]
+  /// is [APISchemaAdditionalPropertyPolicy.restricted].
   APISchemaObject? additionalPropertySchema;
+
+  /// How `additionalProperties` was given: `false`, `true` or `{}`, or a
+  /// schema. `null` when it was not given; JSON Schema then allows any
+  /// additional properties, but many generators treat that as disallowed,
+  /// so the choice is left to the consumer.
   APISchemaAdditionalPropertyPolicy? additionalPropertyPolicy;
 
   String? description;
@@ -284,7 +295,10 @@ final class APISchemaObject extends APIObject {
         object.decodeObjectMap('properties', () => APISchemaObject()) ?? {};
 
     final addlProps = object['additionalProperties'];
-    if (addlProps is bool) {
+    if (addlProps == null) {
+      additionalPropertyPolicy = null;
+      additionalPropertySchema = null;
+    } else if (addlProps is bool) {
       if (addlProps) {
         additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.freeForm;
       } else {
