@@ -67,6 +67,15 @@ jobs:
             open_api_forked:
               path: ../../../open-api-dart
           YAML
+          # `dart pub get` also resolves the example, whose pubspec points
+          # open_api_forked at the generator's submodule (not checked out).
+          cat > example/pubspec_overrides.yaml <<'YAML'
+          dependency_overrides:
+            openapi_base:
+              path: ../../openapi_base
+            open_api_forked:
+              path: ../../../../open-api-dart
+          YAML
 
       - name: Golden test
         working-directory: openapi_dart/packages/openapi_code_builder
