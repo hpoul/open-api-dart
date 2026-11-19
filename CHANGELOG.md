@@ -62,12 +62,15 @@
 - **Breaking:** decoding a malformed document throws an
   `OpenApiFormatException` (which implements `FormatException`) instead of
   an `ArgumentError`, `TypeError` or `FailedCast`. Its `pointer` is a JSON
-  pointer to the offending value, such as
-  `#/paths/~1pets/get/responses/200`. This covers wrong value types, a
-  `null` inside a map or list of objects, non-string keys (as YAML can
-  produce), unresolvable or non-local `$ref`s, and unknown security scheme
-  types. Errors when encoding an invalid model built in code are still
-  `ArgumentError`s.
+  pointer (RFC 6901, prefixed with `#`, not percent-encoded) to the
+  offending value, such as `#/paths/~1pets/get/responses/200`. This covers
+  wrong value types, a `null` inside a map or list of objects, non-string
+  keys (as YAML can produce), non-string, unresolvable or non-local `$ref`s,
+  cycles of `$ref`s (which overflowed the stack), and unknown security scheme
+  types. Code that catches `ArgumentError` or `TypeError` around
+  `APIDocument.fromMap` should catch `FormatException` or
+  `OpenApiFormatException` instead. Errors when encoding an invalid model
+  built in code are still `ArgumentError`s.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 

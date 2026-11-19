@@ -4,8 +4,8 @@
 import 'dart:collection';
 
 import 'package:open_api_forked/src/codec/list_archive.dart';
-import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/codec/resolver.dart';
+import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
 
 /// For each decoded object, the keys whose value in the input was an empty
@@ -88,7 +88,8 @@ final class KeyedArchive extends Object
   String pointer = '#';
 
   /// The JSON pointer of the value for [key] in this object.
-  String pointerTo(String? key) => appendPointer(pointer, key ?? '');
+  String pointerTo(String? key) =>
+      key == null ? pointer : appendPointer(pointer, key);
 
   /// Converts [value], a decoded map, to a [KeyedArchive] at [pointer].
   ///
@@ -274,22 +275,38 @@ final class KeyedArchive extends Object
       return null;
     }
 
-    try {
-      if (T == Uri) {
-        return Uri.parse(v as String) as T;
-      } else if (T == DateTime) {
-        return DateTime.parse(v as String) as T;
+    if (T == Uri || T == DateTime) {
+      if (v is! String) {
+        throw _typeMismatch(key, v, 'a string');
       }
-      return v as T?;
-    } on TypeError {
-      throw _typeMismatch(key, v, '$T');
-    } on FormatException catch (e) {
-      throw OpenApiFormatException(
-        'Invalid $T: ${e.message}',
-        pointer: pointerTo(key),
-        source: v,
-      );
+      try {
+        return (T == Uri ? Uri.parse(v) : DateTime.parse(v)) as T;
+      } on FormatException catch (e) {
+        throw OpenApiFormatException(
+          'Invalid $T: ${e.message}',
+          pointer: pointerTo(key),
+          source: v,
+        );
+      }
     }
+    if (v is! T) {
+      throw _typeMismatch(key, v, _describeType<T>());
+    }
+    return v;
+  }
+
+  /// Describes [T] for error messages, e.g. `an integer` for [int].
+  static String _describeType<T>() {
+    final probe = <T>[];
+    return switch (probe) {
+      List<int?>() => 'an integer',
+      List<num?>() => 'a number',
+      List<String?>() => 'a string',
+      List<bool?>() => 'a boolean',
+      List<Map<dynamic, dynamic>?>() => 'an object',
+      List<List<dynamic>?>() => 'a list',
+      _ => '$T',
+    };
   }
 
   OpenApiFormatException _typeMismatch(
@@ -327,7 +344,7 @@ final class KeyedArchive extends Object
     for (final (i, element) in value.indexed) {
       if (element is! T) {
         throw OpenApiFormatException(
-          'Expected $T, found ${_describe(element)}.',
+          'Expected ${_describeType<T>()}, found ${_describe(element)}.',
           pointer: appendPointer(pointerTo(key), i),
           source: element,
         );

@@ -1,12 +1,12 @@
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/callback.dart';
+import 'package:open_api_forked/src/v3/document.dart';
 import 'package:open_api_forked/src/v3/parameter.dart';
+import 'package:open_api_forked/src/v3/path.dart';
 import 'package:open_api_forked/src/v3/request_body.dart';
 import 'package:open_api_forked/src/v3/response.dart';
 import 'package:open_api_forked/src/v3/security.dart';
-import 'package:open_api_forked/src/v3/path.dart';
-import 'package:open_api_forked/src/v3/document.dart';
 import 'package:open_api_forked/src/v3/server.dart';
 
 /// Describes a single API operation on a path.

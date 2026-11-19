@@ -31,7 +31,10 @@ void main() {
           },
         }),
       ),
-      failsAt('#/paths/~1pets~1{id}/get/summary', 'Expected String'),
+      failsAt(
+        '#/paths/~1pets~1{id}/get/summary',
+        'Expected a string, found a number',
+      ),
     );
   });
 
@@ -145,5 +148,99 @@ void main() {
       ),
       failsAt(r'#/paths/~1a/post/callbacks/cb/{$request.body#~1url}'),
     );
+  });
+
+  test('a non-string scope description', () {
+    expect(
+      () => APIDocument.fromMap(
+        spec({})
+          ..['components'] = {
+            'securitySchemes': {
+              'o': {
+                'type': 'oauth2',
+                'flows': {
+                  'implicit': {
+                    'authorizationUrl': 'https://a',
+                    'scopes': {'read': 1},
+                  },
+                },
+              },
+            },
+          },
+      ),
+      failsAt('#/components/securitySchemes/o/flows/implicit/scopes/read'),
+    );
+  });
+
+  test('bad security requirement lists', () {
+    expect(
+      () => APIDocument.fromMap(
+        spec({})
+          ..['security'] = [
+            {'a': null},
+          ],
+      ),
+      failsAt('#/security/0/a'),
+    );
+    expect(
+      () => APIDocument.fromMap(
+        spec({})
+          ..['security'] = [
+            {
+              'a': [1],
+            },
+          ],
+      ),
+      failsAt('#/security/0/a/0', 'Expected a string, found a number'),
+    );
+  });
+
+  test('an integer field names the expected type plainly', () {
+    expect(
+      () => APIDocument.fromMap(
+        spec({})
+          ..['components'] = {
+            'schemas': {
+              'S': {'maxLength': 1.5},
+            },
+          },
+      ),
+      failsAt(
+        '#/components/schemas/S/maxLength',
+        'Expected an integer, found a number',
+      ),
+    );
+  });
+
+  test('a cycle of references', () {
+    expect(
+      () => APIDocument.fromMap(
+        spec({})
+          ..['components'] = {
+            'schemas': {
+              'A': {r'$ref': '#/components/schemas/B'},
+              'B': {r'$ref': '#/components/schemas/A'},
+            },
+          },
+      ),
+      failsAt(r'#/components/schemas/A/$ref', 'cycle'),
+    );
+  });
+
+  test('a self-referencing schema is not a cycle', () {
+    final doc = APIDocument.fromMap(
+      spec({})
+        ..['components'] = {
+          'schemas': {
+            'Node': {
+              'type': 'object',
+              'properties': {
+                'next': {r'$ref': '#/components/schemas/Node'},
+              },
+            },
+          },
+        },
+    );
+    expect(doc.components!.schemas['Node']!.properties['next'], isNotNull);
   });
 }

@@ -1,5 +1,5 @@
-import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
+import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/path.dart';
 

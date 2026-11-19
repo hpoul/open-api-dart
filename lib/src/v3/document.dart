@@ -1,5 +1,5 @@
-import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
+import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/components.dart';
 import 'package:open_api_forked/src/v3/metadata.dart';
@@ -67,6 +67,21 @@ final class APIDocument extends APIObject {
           pointer: appendPointer(pointer, r'$ref'),
           source: ref,
         );
+      }
+      // A chain of objects that are only `$ref`s must end somewhere, or
+      // looking up a missing key would follow it forever.
+      final seen = {ref};
+      var target = _resolvePointer(root, ref);
+      while (target is Map && target[r'$ref'] is String) {
+        final next = target[r'$ref'] as String;
+        if (!seen.add(next)) {
+          throw OpenApiFormatException(
+            "Reference '$ref' is part of a cycle of references.",
+            pointer: appendPointer(pointer, r'$ref'),
+            source: ref,
+          );
+        }
+        target = _resolvePointer(root, next);
       }
     }
     node.forEach((key, value) {
