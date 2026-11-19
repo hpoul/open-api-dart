@@ -400,6 +400,105 @@ void main() {
       );
     });
 
+    test('recursive references through x- data and names like default', () {
+      final spec = _spec();
+      spec['x-defs'] = {
+        'Node': {
+          'type': 'object',
+          'properties': {
+            'child': {r'$ref': '#/x-defs/Node'},
+          },
+          'example': {r'$ref': 'http://example.com/data'},
+        },
+        'P': {
+          'properties': {
+            'q': {r'$ref': '#/x-defs/Q'},
+          },
+        },
+        'Q': {
+          'properties': {
+            'p': {r'$ref': '#/x-defs/P'},
+          },
+        },
+        'S': {r'$ref': '#/x-defs/T'},
+        'T': {'type': 'integer'},
+      };
+      final schemas = spec['components']['schemas'] as Map;
+      schemas['A'] = {r'$ref': '#/x-defs/Node'};
+      schemas['B'] = {r'$ref': '#/x-defs/P'};
+      schemas['C'] = {r'$ref': '#/x-defs/S'};
+      schemas['default'] = {
+        'type': 'object',
+        'properties': {
+          'child': {r'$ref': '#/components/schemas/default'},
+        },
+      };
+      final doc = APIDocument.fromMap(spec);
+      final decoded = doc.components!.schemas;
+      expect(
+        decoded['A']!.properties['child']!.referenceURI!.path,
+        '/x-defs/Node',
+      );
+      expect(decoded['A']!.example, {r'$ref': 'http://example.com/data'});
+      expect(decoded['C']!.type, APIType.integer);
+      expect(decoded['default']!.properties['child']!.properties.keys, [
+        'child',
+      ]);
+      expect(json.decode(json.encode(doc.asMap())), spec);
+    });
+
+    test('data inside objects referenced under names like default', () {
+      final spec = _spec();
+      final components = spec['components'] as Map;
+      components['responses'] = {
+        'default': {
+          'description': 'error',
+          'content': {
+            'application/json': {
+              'example': {r'$ref': 'http://example.com/x'},
+            },
+          },
+        },
+      };
+      components['examples']['default'] = {
+        'value': {r'$ref': 'http://example.com/x'},
+      };
+      final op = spec['paths']['/pets/{id}']['get'] as Map;
+      op['responses']['default'] = {r'$ref': '#/components/responses/default'};
+      op['responses']['200']['content']['text/plain']['examples'] = {
+        'd': {r'$ref': '#/components/examples/default'},
+      };
+      op['responses']['200']['content']['text/plain'].remove('example');
+      final doc = APIDocument.fromMap(spec);
+      final responses = doc.paths['/pets/{id}']!.operations['get']!.responses;
+      expect(responses['default']!.content['application/json']!.example, {
+        r'$ref': 'http://example.com/x',
+      });
+      expect(responses['200']!.content['text/plain']!.examples['d']!.value, {
+        r'$ref': 'http://example.com/x',
+      });
+    });
+
+    test('asMap checks references into extensions built in code', () {
+      final doc = APIDocument.fromMap(_spec());
+      doc.extensions['x-defs'] = {
+        'S': {
+          'type': 'object',
+          'properties': {
+            'c': {r'$ref': '#/x-defs/S'},
+          },
+        },
+      };
+      doc.components!.schemas['A'] = APISchemaObject()
+        ..referenceURI = Uri(path: '/x-defs/S');
+      expect(doc.asMap()['components']['schemas']['A'], {
+        r'$ref': '#/x-defs/S',
+      });
+      doc.components!.schemas['B'] = APISchemaObject()
+        ..referenceURI = Uri(path: '/x-defs/nope');
+      expect(doc.asMap, throwsA(isA<OpenApiFormatException>()));
+    });
+
     test('x- extensions in paths, responses and callbacks are data', () {
       final spec = _spec();
       final path = spec['paths']['/pets/{id}'] as Map;

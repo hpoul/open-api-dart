@@ -32,7 +32,7 @@ final class APIDocument extends APIObject {
   /// document.
   APIDocument.fromMap(Map<String, dynamic> map) {
     final prepared = Map<String, dynamic>.from(
-      _prepare(map, map, '#', _Node.object)! as Map,
+      _prepare(map, map, '#', _Node.object, _referencedPointers(map))! as Map,
     );
     decode(KeyedArchive.unarchive(prepared, allowReferences: true));
   }
@@ -73,16 +73,27 @@ final class APIDocument extends APIObject {
   ///
   /// Which values are free-form depends on their position: in a name map
   /// such as `examples` or `properties`, a key like `default` is a name.
+  ///
+  /// Free-form data that a `$ref` points into (such as shared definitions
+  /// under an `x-` key) is read as OpenAPI objects instead; [referenced]
+  /// holds the pointers of everything a `$ref` passes through.
   static Object? _prepare(
     Map<String, dynamic> root,
     Object? node,
     String pointer,
     _Node kind,
+    Set<String> referenced,
   ) {
     if (node is List) {
       return [
         for (final (i, item) in node.indexed)
-          _prepare(root, item, appendPointer(pointer, i), _Node.object),
+          _prepare(
+            root,
+            item,
+            appendPointer(pointer, i),
+            _Node.object,
+            referenced,
+          ),
       ];
     }
     if (node is! Map) {
@@ -92,19 +103,52 @@ final class APIDocument extends APIObject {
     return <dynamic, dynamic>{
       for (final MapEntry(:key, :value) in node.entries)
         key: switch (key) {
-          String() when kind.isFreeForm(key, value) => FreeForm(
-            value,
-            appendPointer(pointer, key),
-          ),
+          String() when kind.isFreeForm(key, value) =>
+            referenced.contains(appendPointer(pointer, key))
+                ? _prepare(
+                    root,
+                    value,
+                    appendPointer(pointer, key),
+                    _Node.object,
+                    referenced,
+                  )
+                : FreeForm(value, appendPointer(pointer, key)),
           String() => _prepare(
             root,
             value,
             appendPointer(pointer, key),
             kind.child(key, value),
+            referenced,
           ),
           _ => value,
         },
     };
+  }
+
+  /// The pointers of every map a `$ref` in [node] passes through, such as
+  /// `#/x-defs` and `#/x-defs/S` for `#/x-defs/S`. Collected from the whole
+  /// document, including `$ref`-shaped free-form data, which at worst makes
+  /// some data be read as objects.
+  static Set<String> _referencedPointers(Object? node) {
+    final pointers = <String>{};
+    void collect(Object? node) {
+      if (node is List) {
+        node.forEach(collect);
+      } else if (node is Map) {
+        final ref = node[r'$ref'];
+        if (ref is String && ref.startsWith('#/')) {
+          var pointer = '#';
+          for (final segment in ref.substring(2).split('/')) {
+            pointer = '$pointer/$segment';
+            pointers.add(pointer);
+          }
+        }
+        node.values.forEach(collect);
+      }
+    }
+
+    collect(node);
+    return pointers;
   }
 
   static void _checkReference(
@@ -144,33 +188,6 @@ final class APIDocument extends APIObject {
         }
         target = _resolvePointer(root, next);
       }
-      // A reference into free-form data, such as shared definitions under
-      // an `x-` key, makes that data an object, whose own references are
-      // resolved too, so check them.
-      final segments = Uri.parse(Uri.parse(ref).fragment).pathSegments;
-      if (segments.any(
-        (s) => s.startsWith('x-') || _freeFormFields.contains(s),
-      )) {
-        _checkAllReferences(root, _resolvePointer(root, ref), ref);
-      }
-    }
-  }
-
-  /// Checks every `$ref` in [node], whatever its position.
-  static void _checkAllReferences(
-    Map<String, dynamic> root,
-    Object? node,
-    String pointer,
-  ) {
-    if (node is List) {
-      for (final (i, item) in node.indexed) {
-        _checkAllReferences(root, item, appendPointer(pointer, i));
-      }
-    } else if (node is Map) {
-      _checkReference(root, node, pointer);
-      node.forEach((key, value) {
-        _checkAllReferences(root, value, appendPointer(pointer, '$key'));
-      });
     }
   }
 

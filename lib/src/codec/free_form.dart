@@ -1,5 +1,3 @@
-import 'package:open_api_forked/src/codec/keyed_archive.dart';
-import 'package:open_api_forked/src/codec/resolver.dart';
 import 'package:open_api_forked/src/exception.dart';
 
 /// Free-form data in a document, such as an `example`, a schema `default`
@@ -13,32 +11,13 @@ final class FreeForm {
   /// Where the value is in its document.
   final String pointer;
 
-  KeyedArchive? _archive;
-
-  /// The value as an archive, for a `$ref` that points into it, such as
-  /// shared definitions kept under an `x-` key. Its own `$ref`s are
-  /// resolved with [resolver]. Null if the value is not a map.
-  KeyedArchive? archive(ReferenceResolver resolver) {
-    final existing = _archive;
-    if (existing != null) {
-      return existing;
-    }
-    final value = this.value;
-    if (value is! Map) {
-      return null;
-    }
-    // A copy, because the archive converts maps in place.
-    final archive = _archive = KeyedArchive.fromMap(
-      _plain(value, pointer)! as Map,
-      pointer,
-    );
-    archive.resolveOrThrow(resolver);
-    return archive;
-  }
-
   /// The value, with maps as `Map<String, dynamic>` and lists as
   /// `List<dynamic>`.
   final Object? value;
+
+  /// [value] with maps as `Map<String, dynamic>` and lists as
+  /// `List<dynamic>`, copied.
+  static Object? plain(Object? value, String pointer) => _plain(value, pointer);
 
   static Object? _plain(Object? value, String pointer) {
     if (value is List) {

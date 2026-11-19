@@ -156,6 +156,8 @@ final class KeyedArchive extends Object
         out[key] = val.toPrimitive();
       } else if (val is ListArchive) {
         out[key] = val.toPrimitive();
+      } else if (val is FreeForm) {
+        out[key] = FreeForm.plain(val.value, pointerTo(key));
       } else {
         out[key] = val;
       }

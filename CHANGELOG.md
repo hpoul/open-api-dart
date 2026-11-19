@@ -144,8 +144,9 @@
   other reference instead of being skipped. An `examples` list (JSON
   Schema, or converted Swagger 2) is ignored.
 - A `$ref` may still point into free-form data, such as shared definitions
-  under an `x-` key; that data is then read as an object, and its own
-  `$ref`s are checked and resolved.
+  under an `x-` key: whatever a `$ref` points into is read as OpenAPI
+  objects (its own `$ref`s are checked and resolved, its examples stay
+  data), and the extension's value is still plain data.
 - `x-` extensions directly in `paths`, operation `responses` and callbacks
   are ignored instead of being decoded as a path item or response (which
   failed for anything but an object, and lost its content).

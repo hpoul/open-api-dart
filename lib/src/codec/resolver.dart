@@ -22,9 +22,10 @@ final class ReferenceResolver {
       final next = object?.rawValue(segment);
       object = switch (next) {
         KeyedArchive() => next,
-        FreeForm() => next.archive(this),
-        // Free-form data in an encoded document.
-        Map() => FreeForm(next, '#').archive(this),
+        // An extension value in an encoded document, such as shared
+        // definitions under an `x-` key. Only checked to exist: a copy,
+        // because the archive converts maps in place.
+        Map() => KeyedArchive.fromMap(FreeForm.plain(next, '#')! as Map, '#'),
         _ => null,
       };
     }
