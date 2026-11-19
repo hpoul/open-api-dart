@@ -13,52 +13,44 @@ enum APIParameterLocation {
   /// Parameters that are appended to the URL.
   ///
   /// For example, in /items?id=###, the query parameter is id.
-  query,
+  query('query'),
 
   /// Custom headers that are expected as part of the request.
   ///
   /// Note that RFC7230 states header names are case insensitive.
-  header,
+  header('header'),
 
   /// Used together with Path Templating, where the parameter value is actually part of the operation's URL.
   ///
   /// This does not include the host or base path of the API. For example, in /items/{itemId}, the path parameter is itemId.
-  path,
+  path('path'),
 
   /// Used to pass a specific cookie value to the API.
-  cookie,
+  cookie('cookie');
+
+  const APIParameterLocation(this.jsonValue);
+
+  /// The value of `in` in OpenAPI documents.
+  final String jsonValue;
+
+  static final Map<String, APIParameterLocation> _byJsonValue = {
+    for (final value in values) value.jsonValue: value,
+  };
+
+  /// Returns the location for [jsonValue], or `null` if it is `null` or
+  /// unknown.
+  static APIParameterLocation? fromJson(String? jsonValue) =>
+      _byJsonValue[jsonValue];
+
+  String toJson() => jsonValue;
 }
 
+@Deprecated('Use APIParameterLocation.fromJson and .jsonValue.')
 class APIParameterLocationCodec {
-  static APIParameterLocation? decode(String? location) {
-    switch (location) {
-      case 'query':
-        return APIParameterLocation.query;
-      case 'header':
-        return APIParameterLocation.header;
-      case 'path':
-        return APIParameterLocation.path;
-      case 'cookie':
-        return APIParameterLocation.cookie;
-      default:
-        return null;
-    }
-  }
+  static APIParameterLocation? decode(String? location) =>
+      APIParameterLocation.fromJson(location);
 
-  static String? encode(APIParameterLocation? location) {
-    switch (location) {
-      case APIParameterLocation.query:
-        return 'query';
-      case APIParameterLocation.header:
-        return 'header';
-      case APIParameterLocation.path:
-        return 'path';
-      case APIParameterLocation.cookie:
-        return 'cookie';
-      default:
-        return null;
-    }
-  }
+  static String? encode(APIParameterLocation? location) => location?.jsonValue;
 }
 
 /// Describes a single operation parameter.
@@ -217,7 +209,7 @@ class APIParameter extends APIObject {
 
     name = object.decode('name');
     description = object.decode('description');
-    location = APIParameterLocationCodec.decode(object.decode('in'));
+    location = APIParameterLocation.fromJson(object.decode('in'));
     _required = object.decode('required');
 
     _deprecated = object.decode('deprecated');
@@ -242,7 +234,7 @@ class APIParameter extends APIObject {
 
     object.encode('name', name);
     object.encode('description', description);
-    object.encode('in', APIParameterLocationCodec.encode(location));
+    object.encode('in', location?.jsonValue);
 
     if (location == APIParameterLocation.path) {
       object.encode('required', true);

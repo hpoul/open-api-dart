@@ -278,7 +278,7 @@ class APISchemaObject extends APIObject {
 
     //
 
-    type = APITypeCodec.decode(object.decode('type'));
+    type = APIType.fromJson(object.decode('type'));
     allOf = object.decodeObjects('allOf', () => APISchemaObject());
     anyOf = object.decodeObjects('anyOf', () => APISchemaObject());
     oneOf = object.decodeObjects('oneOf', () => APISchemaObject());
@@ -337,7 +337,7 @@ class APISchemaObject extends APIObject {
 
     //
 
-    object.encode('type', APITypeCodec.encode(type));
+    object.encode('type', type?.jsonValue);
     object.encodeObjects('allOf', allOf);
     object.encodeObjects('anyOf', anyOf);
     object.encodeObjects('oneOf', oneOf);
