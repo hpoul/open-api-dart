@@ -47,7 +47,7 @@ enum APIParameterLocation {
 }
 
 @Deprecated('Use APIParameterLocation.fromJson and .jsonValue.')
-class APIParameterLocationCodec {
+abstract final class APIParameterLocationCodec {
   static APIParameterLocation? decode(String? location) =>
       APIParameterLocation.fromJson(location);
 

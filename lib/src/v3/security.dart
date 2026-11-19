@@ -31,7 +31,7 @@ enum APISecuritySchemeType {
 }
 
 @Deprecated('Use APISecuritySchemeType.fromJson and .jsonValue.')
-class APISecuritySchemeTypeCodec {
+abstract final class APISecuritySchemeTypeCodec {
   static APISecuritySchemeType? decode(String? type) =>
       APISecuritySchemeType.fromJson(type);
 

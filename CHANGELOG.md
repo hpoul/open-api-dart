@@ -35,10 +35,12 @@
   `encode` take the internal `KeyedArchive`, so calling or overriding them
   from outside the package is not supported. Use `APIDocument.fromMap` and
   `asMap()` to read and write documents.
-- **Breaking:** class modifiers. `APIObject` is an `abstract base class` and
-  every model class (`APIDocument`, `APISchemaObject`, `APIParameter`, ...)
-  is `final`, so they can no longer be extended or implemented outside the
-  package. Wrap them instead.
+- **Breaking:** class modifiers. Every model class (`APIDocument`,
+  `APISchemaObject`, `APIParameter`, ...) is `final`, so it can no longer be
+  extended or implemented outside the package; wrap it instead. `APIObject`
+  is an `abstract base class`: it can no longer be implemented, and a
+  subclass must be `base`, `final` or `sealed`. The deprecated `*Codec`
+  classes are `abstract final`.
 - Invalid `tags` or `required` lists now throw `TypeError` instead of
   `FailedCast`.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
