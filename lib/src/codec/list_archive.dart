@@ -9,7 +9,7 @@ import 'package:open_api_forked/src/codec/resolver.dart';
 /// A list of values in a [KeyedArchive].
 ///
 /// This object is a [List] that has additional behavior for encoding and decoding [APIObject] objects.
-class ListArchive extends Object
+final class ListArchive extends Object
     with ListMixin<dynamic>
     implements Referencable {
   final List<dynamic> _inner;

@@ -7,7 +7,7 @@ import 'package:open_api_forked/src/codec/keyed_archive.dart';
 /// Both take the package's internal `KeyedArchive`; calling or overriding
 /// them from outside this package is not supported. Use
 /// `APIDocument.fromMap` and `asMap()` instead.
-class APIObject {
+abstract base class APIObject {
   /// If this object is a `$ref`, the path of the referenced object, e.g.
   /// `/components/schemas/Pet` for `#/components/schemas/Pet`.
   ///

@@ -8,7 +8,7 @@ abstract interface class Referencable {
   void resolveOrThrow(ReferenceResolver resolver);
 }
 
-class ReferenceResolver {
+final class ReferenceResolver {
   ReferenceResolver(this.document);
 
   final KeyedArchive document;

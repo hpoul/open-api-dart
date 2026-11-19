@@ -7,7 +7,7 @@ import 'package:open_api_forked/src/v3/schema.dart';
 ///
 /// It follows the structure of a parameter, except that `name` is the key in
 /// the headers map that holds it, and `in` is implicitly `header`.
-class APIHeader extends APIObject {
+final class APIHeader extends APIObject {
   APIHeader({
     this.description,
     this.schema,

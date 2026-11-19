@@ -5,7 +5,7 @@ import 'package:open_api_forked/src/v3/path.dart';
 /// A map of possible out-of band callbacks related to the parent operation.
 ///
 /// Each value in the map is a [APIPath] that describes a set of requests that may be initiated by the API provider and the expected responses. The key value used to identify the callback object is an expression, evaluated at runtime, that identifies a URL to use for the callback operation.
-class APICallback extends APIObject {
+final class APICallback extends APIObject {
   APICallback({Map<String, APIPath>? paths}) : paths = paths ?? {};
   APICallback.empty() : paths = {};
 

@@ -2,7 +2,7 @@ import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 
 /// An object representing a Server.
-class APIServerDescription extends APIObject {
+final class APIServerDescription extends APIObject {
   APIServerDescription.empty();
   APIServerDescription(this.url, {this.description, this.variables});
 
@@ -81,7 +81,7 @@ class APIServerDescription extends APIObject {
 }
 
 /// An object representing a Server Variable for server URL template substitution.
-class APIServerVariable extends APIObject {
+final class APIServerVariable extends APIObject {
   APIServerVariable.empty();
   APIServerVariable(
     this.defaultValue, {

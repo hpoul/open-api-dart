@@ -57,7 +57,7 @@ class APIParameterLocationCodec {
 /// Describes a single operation parameter.
 ///
 /// A unique parameter is defined by a combination of a [name] and [location].
-class APIParameter extends APIObject {
+final class APIParameter extends APIObject {
   APIParameter.empty();
 
   APIParameter(
