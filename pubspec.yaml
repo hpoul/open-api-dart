@@ -1,5 +1,5 @@
 name: open_api_forked
-description: Data structures for OpenAPI 3.0 documents. Reads and writes JSON/YAML-decoded specifications. Fork of open_api, maintained for openapi_code_builder.
+description: Data structures for OpenAPI 3.0 documents. Reads and writes JSON-compatible maps (as from jsonDecode). Fork of open_api, maintained for openapi_code_builder.
 version: 4.0.0-dev.1
 homepage: https://github.com/hpoul/open-api-dart
 repository: https://github.com/hpoul/open-api-dart
