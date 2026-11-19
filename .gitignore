@@ -11,5 +11,4 @@ doc/api/
 .dart_tool/
 .idea/
 *.iml
-test/specs/kubernetes.json
 test/specs/stripe.json
