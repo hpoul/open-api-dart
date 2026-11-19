@@ -4,42 +4,38 @@ import 'package:open_api_forked/src/v3/document.dart';
 import 'package:open_api_forked/src/v3/operation.dart';
 import 'package:open_api_forked/src/v3/parameter.dart';
 
-enum APISecuritySchemeType { apiKey, http, oauth2, openID, openIdConnect }
+/// The `type` of an [APISecurityScheme].
+enum APISecuritySchemeType {
+  apiKey('apiKey'),
+  http('http'),
+  oauth2('oauth2'),
 
+  /// Not a valid OpenAPI value; use [openIdConnect].
+  openID('openID'),
+  openIdConnect('openIdConnect');
+
+  const APISecuritySchemeType(this.jsonValue);
+
+  /// The value used in OpenAPI documents.
+  final String jsonValue;
+
+  static final Map<String, APISecuritySchemeType> _byJsonValue = {
+    for (final value in values) value.jsonValue: value,
+  };
+
+  /// Returns the type for [jsonValue], or `null` if it is `null` or unknown.
+  static APISecuritySchemeType? fromJson(String? jsonValue) =>
+      _byJsonValue[jsonValue];
+
+  String toJson() => jsonValue;
+}
+
+@Deprecated('Use APISecuritySchemeType.fromJson and .jsonValue.')
 class APISecuritySchemeTypeCodec {
-  static APISecuritySchemeType? decode(String? type) {
-    switch (type) {
-      case 'apiKey':
-        return APISecuritySchemeType.apiKey;
-      case 'http':
-        return APISecuritySchemeType.http;
-      case 'oauth2':
-        return APISecuritySchemeType.oauth2;
-      case 'openID':
-        return APISecuritySchemeType.openID;
-      case 'openIdConnect':
-        return APISecuritySchemeType.openIdConnect;
-      default:
-        return null;
-    }
-  }
+  static APISecuritySchemeType? decode(String? type) =>
+      APISecuritySchemeType.fromJson(type);
 
-  static String? encode(APISecuritySchemeType? type) {
-    switch (type) {
-      case APISecuritySchemeType.apiKey:
-        return 'apiKey';
-      case APISecuritySchemeType.http:
-        return 'http';
-      case APISecuritySchemeType.oauth2:
-        return 'oauth2';
-      case APISecuritySchemeType.openID:
-        return 'openID';
-      case APISecuritySchemeType.openIdConnect:
-        return 'openIdConnect';
-      default:
-        return null;
-    }
-  }
+  static String? encode(APISecuritySchemeType? type) => type?.jsonValue;
 }
 
 /// Defines a security scheme that can be used by the operations.
@@ -111,14 +107,14 @@ class APISecurityScheme extends APIObject {
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    type = APISecuritySchemeTypeCodec.decode(object.decode('type'));
+    type = APISecuritySchemeType.fromJson(object.decode('type'));
     description = object.decode('description');
 
     switch (type) {
       case APISecuritySchemeType.apiKey:
         {
           name = object.decode('name');
-          location = APIParameterLocationCodec.decode(object.decode('in'));
+          location = APIParameterLocation.fromJson(object.decode('in'));
         }
         break;
       case APISecuritySchemeType.oauth2:
@@ -158,7 +154,7 @@ class APISecurityScheme extends APIObject {
       );
     }
 
-    object.encode('type', APISecuritySchemeTypeCodec.encode(type));
+    object.encode('type', type?.jsonValue);
     object.encode('description', description);
 
     switch (type) {
@@ -171,7 +167,7 @@ class APISecurityScheme extends APIObject {
           }
 
           object.encode('name', name);
-          object.encode('in', APIParameterLocationCodec.encode(location));
+          object.encode('in', location?.jsonValue);
         }
         break;
       case APISecuritySchemeType.oauth2:
@@ -202,7 +198,7 @@ class APISecurityScheme extends APIObject {
         {
           if (connectURL == null) {
             throw ArgumentError(
-              "APISecurityScheme with '${APISecuritySchemeTypeCodec.encode(type)}' type must have non-null values for: 'connectURL'.",
+              "APISecurityScheme with '${type?.jsonValue}' type must have non-null values for: 'connectURL'.",
             );
           }
           object.encode('openIdConnectUrl', connectURL);

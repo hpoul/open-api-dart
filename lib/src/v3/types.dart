@@ -1,41 +1,30 @@
-enum APIType { string, number, integer, boolean, array, object }
+/// The `type` of an [APISchemaObject](https://spec.openapis.org/oas/v3.0.3#schema-object).
+enum APIType {
+  string('string'),
+  number('number'),
+  integer('integer'),
+  boolean('boolean'),
+  array('array'),
+  object('object');
 
+  const APIType(this.jsonValue);
+
+  /// The value used in OpenAPI documents.
+  final String jsonValue;
+
+  static final Map<String, APIType> _byJsonValue = {
+    for (final value in values) value.jsonValue: value,
+  };
+
+  /// Returns the type for [jsonValue], or `null` if it is `null` or unknown.
+  static APIType? fromJson(String? jsonValue) => _byJsonValue[jsonValue];
+
+  String toJson() => jsonValue;
+}
+
+@Deprecated('Use APIType.fromJson and APIType.jsonValue.')
 class APITypeCodec {
-  static APIType? decode(String? type) {
-    switch (type) {
-      case 'string':
-        return APIType.string;
-      case 'number':
-        return APIType.number;
-      case 'integer':
-        return APIType.integer;
-      case 'boolean':
-        return APIType.boolean;
-      case 'array':
-        return APIType.array;
-      case 'object':
-        return APIType.object;
-      default:
-        return null;
-    }
-  }
+  static APIType? decode(String? type) => APIType.fromJson(type);
 
-  static String? encode(APIType? type) {
-    switch (type) {
-      case APIType.string:
-        return 'string';
-      case APIType.number:
-        return 'number';
-      case APIType.integer:
-        return 'integer';
-      case APIType.boolean:
-        return 'boolean';
-      case APIType.array:
-        return 'array';
-      case APIType.object:
-        return 'object';
-      default:
-        return null;
-    }
-  }
+  static String? encode(APIType? type) => type?.jsonValue;
 }

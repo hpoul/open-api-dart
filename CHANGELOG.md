@@ -10,6 +10,9 @@
 - Getter/setter pairs that only wrapped a private field are plain fields now
   (`explode`, `allowReserved`, `allowEmptyValue`, `isDeprecated`,
   `isRequired`). Same names and types, so callers are unaffected.
+- `APIType`, `APIParameterLocation` and `APISecuritySchemeType` are enhanced
+  enums with `jsonValue`, `fromJson` (returns `null` for unknown values) and
+  `toJson`. The `*Codec` classes are deprecated and will be removed.
 
 ## 3.0.1
 
