@@ -4,6 +4,9 @@ import 'package:open_api_forked/src/object.dart';
 /// An object representing a Server.
 final class APIServerDescription extends APIObject {
   APIServerDescription.empty();
+
+  @override
+  Map<String, Object?> get toStringFields => {'url': url};
   APIServerDescription(
     this.url, {
     this.description,

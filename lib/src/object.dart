@@ -45,4 +45,32 @@ abstract base class APIObject {
       object.encode(key, value);
     });
   }
+
+  /// The fields that [toString] shows. Null and empty values are left out.
+  @protected
+  Map<String, Object?> get toStringFields => const {};
+
+  /// A short description for debugging, such as
+  /// `APIParameter(name: id, in: path)`, or `APISchemaObject($ref:
+  /// #/components/schemas/Pet)` for a reference.
+  @override
+  String toString() {
+    final ref = referenceURI;
+    if (ref != null) {
+      return '$runtimeType(\$ref: #${ref.path})';
+    }
+    final fields = [
+      for (final MapEntry(:key, :value) in toStringFields.entries)
+        if (value != null &&
+            !(value is Iterable && value.isEmpty) &&
+            !(value is Map && value.isEmpty))
+          '$key: ${switch (value) {
+            Map() => '[${value.keys.join(', ')}]',
+            Iterable() => '[${value.join(', ')}]',
+            Enum(:final name) => name,
+            _ => value,
+          }}',
+    ];
+    return '$runtimeType(${fields.join(', ')})';
+  }
 }

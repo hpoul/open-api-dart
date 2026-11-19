@@ -22,6 +22,9 @@ final class APIHeader extends APIObject {
 
   APIHeader.empty();
 
+  @override
+  Map<String, Object?> get toStringFields => {'schema': schema};
+
   /// A brief description of the header.
   ///
   /// CommonMark syntax MAY be used for rich text representation.

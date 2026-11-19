@@ -9,6 +9,9 @@ final class APIMediaType extends APIObject {
     : encoding = encoding ?? {};
   APIMediaType.empty();
 
+  @override
+  Map<String, Object?> get toStringFields => {'schema': schema};
+
   /// The schema defining the type used for the request body.
   APISchemaObject? schema;
 

@@ -45,6 +45,13 @@ abstract final class APISecuritySchemeTypeCodec {
 final class APISecurityScheme extends APIObject {
   APISecurityScheme();
 
+  @override
+  Map<String, Object?> get toStringFields => {
+    'type': type?.jsonValue,
+    'scheme': scheme,
+    'name': name,
+  };
+
   APISecurityScheme.empty();
 
   APISecurityScheme.http(this.scheme) : type = APISecuritySchemeType.http;

@@ -109,6 +109,12 @@
   `APISchemaObject.map()` now sets the policy too (`restricted`, or
   `freeForm` for `any: true`), so a decoded or `.map()`-built `restricted`
   always comes with an `additionalPropertySchema`.
+- New `APIDocument.operations` yields every operation as a record
+  `(path, pathItem, method, operation)`, replacing the nested loop over
+  `paths` and `operations`.
+- Model objects have a short `toString()` for debugging, such as
+  `APIParameter(name: id, in: path)` or
+  `APISchemaObject($ref: #/components/schemas/Pet)`.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 
