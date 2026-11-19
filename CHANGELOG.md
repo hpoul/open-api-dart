@@ -17,6 +17,13 @@
   `openID` type still decodes, as `openIdConnect`, and encodes as
   `openIdConnect`. `APISecurityScheme.openID()` is deprecated in favour of
   `APISecurityScheme.openIdConnect()`.
+- **Breaking:** `APIHeader` is its own class instead of an `APIParameter`
+  subclass, so it no longer has `name` or `location`. It has the Header
+  Object fields: `description`, `isRequired`, `isDeprecated`, `style`,
+  `explode`, `schema`, `content`, and `example`/`examples` kept as decoded
+  data. This fixes
+  re-encoding a decoded document with headers, which threw because the
+  header had no `name`/`in`.
 
 ## 3.0.1
 
