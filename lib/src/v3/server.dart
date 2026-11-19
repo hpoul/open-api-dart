@@ -16,14 +16,19 @@ class APIServerDescription extends APIObject {
   /// Returns [url] with every `{variable}` replaced by its value in [values],
   /// or else by the variable's default, as a [Uri].
   ///
-  /// Throws an [ArgumentError] if a variable has neither, and a
-  /// [FormatException] if the result is not a valid URI.
+  /// Values are inserted as they are, without percent-encoding (so a value
+  /// such as `/v2` keeps its slash) and without checking them against the
+  /// variable's `enum`.
+  ///
+  /// Throws an [ArgumentError] if a variable has neither, a [StateError] if
+  /// there is no [url], and a [FormatException] if the result is not a valid
+  /// URI.
   Uri resolve([Map<String, String> values = const {}]) {
     final template = url;
     if (template == null) {
-      throw ArgumentError('APIServerDescription has no url.');
+      throw StateError('APIServerDescription has no url.');
     }
-    final resolved = template.replaceAllMapped(RegExp(r'\{([^}]+)\}'), (m) {
+    final resolved = template.replaceAllMapped(RegExp(r'\{([^{}]+)\}'), (m) {
       final name = m[1]!;
       final value = values[name] ?? variables?[name]?.defaultValue;
       if (value == null) {
