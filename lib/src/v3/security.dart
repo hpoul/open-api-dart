@@ -40,6 +40,8 @@ class APISecuritySchemeTypeCodec {
         return "oauth2";
       case APISecuritySchemeType.openID:
         return "openID";
+      case APISecuritySchemeType.openIdConnect:
+        return "openIdConnect";
       default:
         return null;
     }
@@ -193,10 +195,11 @@ class APISecurityScheme extends APIObject {
         }
         break;
       case APISecuritySchemeType.openID:
+      case APISecuritySchemeType.openIdConnect:
         {
           if (connectURL == null) {
             throw ArgumentError(
-                "APISecurityScheme with 'openID' type must have non-null values for: 'connectURL'.");
+                "APISecurityScheme with '${APISecuritySchemeTypeCodec.encode(type)}' type must have non-null values for: 'connectURL'.");
           }
           object.encode("openIdConnectUrl", connectURL);
         }

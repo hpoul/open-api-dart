@@ -17,17 +17,24 @@ class APICallback extends APIObject {
     super.decode(object);
 
     paths = {};
-    object.forEach((key, dynamic value) {
-      if (value is! KeyedArchive) {
+    for (final key in object.keys) {
+      // Extensions are decoded by `super.decode`.
+      if (key.startsWith("x-") || key == r"$ref") {
+        continue;
+      }
+      if (object[key] is! KeyedArchive) {
         throw ArgumentError(
             "Invalid specification. Callback contains non-object value.");
       }
-      paths[key] = value.decodeObject(key, () => APIPath())!;
-    });
+      paths[key] = object.decodeObject(key, () => APIPath())!;
+    }
   }
 
   void encode(KeyedArchive object) {
     super.encode(object);
-    throw StateError("APICallback.encode: not yet implemented.");
+
+    paths.forEach((key, path) {
+      object.encodeObject(key, path);
+    });
   }
 }

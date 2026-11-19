@@ -67,7 +67,9 @@ class APIServerVariable extends APIObject {
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    availableValues = List<String>.from(object.decode("enum"));
+    final List? enumValues = object.decode("enum");
+    availableValues =
+        enumValues == null ? null : List<String>.from(enumValues);
     defaultValue = object.decode("default");
     description = object.decode("description");
   }
