@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned so a new SDK's formatter or lints can't turn unrelated PRs red.
+  # Bump on purpose.
+  DART_SDK: 3.14.1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+
+      - name: Fetch test specs
+        run: tool/fetch_test_specs.sh
+
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: dart analyze --fatal-warnings
+      - run: dart test
+
+  # The generator (hpoul/openapi_dart) is the main consumer. Run its golden
+  # test against this revision, so a change in the model that alters
+  # generated code shows up here, before it lands.
+  generator-golden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: open-api-dart
+
+      - uses: actions/checkout@v5
+        with:
+          repository: hpoul/openapi_dart
+          path: openapi_dart
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+
+      - name: Use this revision of open_api_forked
+        working-directory: openapi_dart/packages/openapi_code_builder
+        run: |
+          cat > pubspec_overrides.yaml <<'YAML'
+          dependency_overrides:
+            openapi_base:
+              path: ../openapi_base
+            open_api_forked:
+              path: ../../../open-api-dart
+          YAML
+          # `dart pub get` also resolves the example, whose pubspec points
+          # open_api_forked at the generator's submodule (not checked out).
+          cat > example/pubspec_overrides.yaml <<'YAML'
+          dependency_overrides:
+            openapi_base:
+              path: ../../openapi_base
+            open_api_forked:
+              path: ../../../../open-api-dart
+          YAML
+
+      - name: Golden test
+        working-directory: openapi_dart/packages/openapi_code_builder
+        run: |
+          dart pub get
+          dart test test/golden_test.dart

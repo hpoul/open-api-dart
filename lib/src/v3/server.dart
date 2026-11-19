@@ -68,8 +68,7 @@ class APIServerVariable extends APIObject {
     super.decode(object);
 
     final List? enumValues = object.decode("enum");
-    availableValues =
-        enumValues == null ? null : List<String>.from(enumValues);
+    availableValues = enumValues == null ? null : List<String>.from(enumValues);
     defaultValue = object.decode("default");
     description = object.decode("description");
   }
