@@ -41,6 +41,24 @@
   is an `abstract base class`: it can no longer be implemented, and a
   subclass must be `base`, `final` or `sealed`. The deprecated `*Codec`
   classes are `abstract final`.
+- **Breaking:** collections are non-null, with non-null elements, and default
+  to empty growable collections: `Map<String, APISchemaObject> schemas = {}`,
+  `List<APIParameter> parameters = []`, `Map<String, APIOperation> operations`,
+  and so on. Most constructors still accept `null` for optional collections.
+  `APIResponse.addHeader` takes a non-null header. Two exceptions stay
+  nullable because absent means something different from empty:
+  `security` (absent inherits, `[]` means no auth) and `servers`. Free-form
+  values (`enum`, `example`, `examples`) are unchanged.
+- Absent and empty collections now round-trip: an optional empty collection
+  is only encoded if it was present in the decoded input. This fixes
+  `components` without `schemas` encoding as `schemas: {}`. The REQUIRED
+  `paths`, operation `responses`, request body `content`, OAuth2 `flows` and
+  `scopes` are always encoded, even when empty.
+- A `null` value inside a map or list of objects (such as `schemas: {A: null}`)
+  is rejected with an `ArgumentError`.
+- Encoding no longer throws for `paths`, operation `responses`, request body
+  `content` or OAuth2 `flows` being missing, since they can no longer be
+  null.
 - Invalid `tags` or `required` lists now throw `TypeError` instead of
   `FailedCast`.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now

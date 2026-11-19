@@ -17,29 +17,29 @@ final class APIComponents extends APIObject {
   APIComponents.empty();
 
   /// An object to hold reusable [APISchemaObject?].
-  Map<String, APISchemaObject?>? schemas = {};
+  Map<String, APISchemaObject> schemas = {};
 
   /// An object to hold reusable [APIResponse?].
-  Map<String, APIResponse?>? responses = {};
+  Map<String, APIResponse> responses = {};
 
   /// An object to hold reusable [APIParameter?].
-  Map<String, APIParameter?>? parameters = {};
+  Map<String, APIParameter> parameters = {};
 
   //Map<String, APIExample> examples = {};
 
   /// An object to hold reusable [APIRequestBody?].
-  Map<String, APIRequestBody?>? requestBodies = {};
+  Map<String, APIRequestBody> requestBodies = {};
 
   /// An object to hold reusable [APIHeader].
-  Map<String, APIHeader?>? headers = {};
+  Map<String, APIHeader> headers = {};
 
   /// An object to hold reusable [APISecurityScheme?].
-  Map<String, APISecurityScheme?>? securitySchemes = {};
+  Map<String, APISecurityScheme> securitySchemes = {};
 
   //Map<String, APILink> links = {};
 
   /// An object to hold reusable [APICallback?].
-  Map<String, APICallback?>? callbacks = {};
+  Map<String, APICallback> callbacks = {};
 
   /// Returns a component definition for [uri].
   ///
@@ -58,7 +58,7 @@ final class APIComponents extends APIObject {
       );
     }
 
-    Map<String, APIObject?>? namedMap;
+    Map<String, APIObject> namedMap;
     switch (segments[1]) {
       case 'schemas':
         namedMap = schemas;
@@ -87,7 +87,7 @@ final class APIComponents extends APIObject {
         );
     }
 
-    return namedMap?[segments.last];
+    return namedMap[segments.last];
   }
 
   T? resolve<T extends APIObject>(T refObject) {
@@ -104,38 +104,35 @@ final class APIComponents extends APIObject {
     super.decode(object);
 
     schemas = object.decodeObjectMap('schemas', () => APISchemaObject()) ?? {};
-    responses = object.decodeObjectMap('responses', () => APIResponse.empty());
-    parameters = object.decodeObjectMap(
-      'parameters',
-      () => APIParameter.empty(),
-    );
+    responses =
+        object.decodeObjectMap('responses', () => APIResponse.empty()) ?? {};
+    parameters =
+        object.decodeObjectMap('parameters', () => APIParameter.empty()) ?? {};
     //    examples = object.decodeObjectMap("examples", () => APIExample());
-    requestBodies = object.decodeObjectMap(
-      'requestBodies',
-      () => APIRequestBody.empty(),
-    );
-    headers = object.decodeObjectMap('headers', () => APIHeader());
+    requestBodies =
+        object.decodeObjectMap('requestBodies', () => APIRequestBody.empty()) ??
+        {};
+    headers = object.decodeObjectMap('headers', () => APIHeader()) ?? {};
 
-    securitySchemes = object.decodeObjectMap(
-      'securitySchemes',
-      () => APISecurityScheme(),
-    );
+    securitySchemes =
+        object.decodeObjectMap('securitySchemes', () => APISecurityScheme()) ??
+        {};
     //    links = object.decodeObjectMap("links", () => APILink());
-    callbacks = object.decodeObjectMap('callbacks', () => APICallback());
+    callbacks = object.decodeObjectMap('callbacks', () => APICallback()) ?? {};
   }
 
   @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
-    object.encodeObjectMap('schemas', schemas);
-    object.encodeObjectMap('responses', responses);
-    object.encodeObjectMap('parameters', parameters);
+    object.encodeObjectMap('schemas', schemas, omitEmpty: true);
+    object.encodeObjectMap('responses', responses, omitEmpty: true);
+    object.encodeObjectMap('parameters', parameters, omitEmpty: true);
     //    object.encodeObjectMap("examples", examples);
-    object.encodeObjectMap('requestBodies', requestBodies);
-    object.encodeObjectMap('headers', headers);
-    object.encodeObjectMap('securitySchemes', securitySchemes);
+    object.encodeObjectMap('requestBodies', requestBodies, omitEmpty: true);
+    object.encodeObjectMap('headers', headers, omitEmpty: true);
+    object.encodeObjectMap('securitySchemes', securitySchemes, omitEmpty: true);
     //    object.encodeObjectMap("links", links);
-    object.encodeObjectMap('callbacks', callbacks);
+    object.encodeObjectMap('callbacks', callbacks, omitEmpty: true);
   }
 }

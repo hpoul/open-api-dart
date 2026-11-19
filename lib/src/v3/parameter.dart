@@ -65,14 +65,14 @@ final class APIParameter extends APIObject {
     this.location, {
     this.description,
     this.schema,
-    this.content,
+    Map<String, APIMediaType>? content,
     this.style,
     bool? isRequired,
     bool? deprecated,
     this.allowEmptyValue,
     this.explode,
     this.allowReserved,
-  }) {
+  }) : content = content ?? {} {
     this.isRequired = isRequired;
     isDeprecated = deprecated;
   }
@@ -81,14 +81,14 @@ final class APIParameter extends APIObject {
     this.name, {
     this.description,
     this.schema,
-    this.content,
+    Map<String, APIMediaType>? content,
     this.style,
     bool? isRequired,
     bool? deprecated,
     this.allowEmptyValue,
     this.explode,
     this.allowReserved,
-  }) {
+  }) : content = content ?? {} {
     this.isRequired = isRequired;
     isDeprecated = deprecated;
     location = APIParameterLocation.header;
@@ -98,14 +98,14 @@ final class APIParameter extends APIObject {
     this.name, {
     this.description,
     this.schema,
-    this.content,
+    Map<String, APIMediaType>? content,
     this.style,
     bool? isRequired,
     bool? deprecated,
     this.allowEmptyValue,
     this.explode,
     this.allowReserved,
-  }) {
+  }) : content = content ?? {} {
     this.isRequired = isRequired;
     isDeprecated = deprecated;
     location = APIParameterLocation.query;
@@ -120,14 +120,14 @@ final class APIParameter extends APIObject {
     this.name, {
     this.description,
     this.schema,
-    this.content,
+    Map<String, APIMediaType>? content,
     this.style,
     bool? isRequired,
     bool? deprecated,
     this.allowEmptyValue,
     this.explode,
     this.allowReserved,
-  }) {
+  }) : content = content ?? {} {
     this.isRequired = isRequired;
     isDeprecated = deprecated;
     location = APIParameterLocation.cookie;
@@ -199,7 +199,7 @@ final class APIParameter extends APIObject {
   /// A map containing the representations for the parameter.
   ///
   /// The key is the media type and the value describes it. The map MUST only contain one entry.
-  Map<String, APIMediaType?>? content;
+  Map<String, APIMediaType> content = {};
 
   // Currently missing:
   // example, examples
@@ -220,7 +220,7 @@ final class APIParameter extends APIObject {
     style = object.decode('style');
     explode = object.decode('explode');
     allowReserved = object.decode('allowReserved');
-    content = object.decodeObjectMap('content', () => APIMediaType());
+    content = object.decodeObjectMap('content', () => APIMediaType()) ?? {};
   }
 
   @override
@@ -253,6 +253,6 @@ final class APIParameter extends APIObject {
     object.encode('style', style);
     object.encode('explode', explode);
     object.encode('allowReserved', allowReserved);
-    object.encodeObjectMap('content', content);
+    object.encodeObjectMap('content', content, omitEmpty: true);
   }
 }

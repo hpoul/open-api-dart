@@ -98,7 +98,7 @@ final class APISecurityScheme extends APIObject {
   /// Fixed keys are implicit, password, clientCredentials and authorizationCode.
   ///
   /// For oauth2 only. REQUIRED if so.
-  Map<String, APISecuritySchemeOAuth2Flow?>? flows;
+  Map<String, APISecuritySchemeOAuth2Flow> flows = {};
 
   /// OpenId Connect URL to discover OAuth2 configuration values.
   ///
@@ -123,10 +123,12 @@ final class APISecurityScheme extends APIObject {
         break;
       case APISecuritySchemeType.oauth2:
         {
-          flows = object.decodeObjectMap(
-            'flows',
-            () => APISecuritySchemeOAuth2Flow.empty(),
-          );
+          flows =
+              object.decodeObjectMap(
+                'flows',
+                () => APISecuritySchemeOAuth2Flow.empty(),
+              ) ??
+              {};
         }
         break;
       case APISecuritySchemeType.http:
@@ -175,12 +177,6 @@ final class APISecurityScheme extends APIObject {
         break;
       case APISecuritySchemeType.oauth2:
         {
-          if (flows == null) {
-            throw ArgumentError(
-              "APISecurityScheme with 'oauth2' type must have non-null values for: 'flows'.",
-            );
-          }
-
           object.encodeObjectMap('flows', flows);
         }
         break;
@@ -261,7 +257,7 @@ final class APISecuritySchemeOAuth2Flow extends APIObject {
   /// The available scopes for the OAuth2 security scheme.
   ///
   /// REQUIRED. A map between the scope name and a short description for it.
-  Map<String, String>? scopes;
+  Map<String, String> scopes = {};
 
   @override
   void encode(KeyedArchive object) {

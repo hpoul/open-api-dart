@@ -7,11 +7,11 @@ import 'package:open_api_forked/src/v3/parameter.dart';
 final class APIEncoding extends APIObject {
   APIEncoding({
     this.contentType,
-    this.headers,
+    Map<String, APIHeader>? headers,
     this.style,
     this.allowReserved,
     this.explode,
-  });
+  }) : headers = headers ?? {};
 
   APIEncoding.empty();
 
@@ -23,7 +23,7 @@ final class APIEncoding extends APIObject {
   /// A map allowing additional information to be provided as headers, for example Content-Disposition.
   ///
   /// Content-Type is described separately and SHALL be ignored in this section. This property SHALL be ignored if the request body media type is not a multipart.
-  Map<String, APIHeader?>? headers;
+  Map<String, APIHeader> headers = {};
 
   /// Determines whether the parameter value SHOULD allow reserved characters, as defined by RFC3986 :/?#[]@!$&'()*+,;= to be included without percent-encoding.
   ///
@@ -45,7 +45,7 @@ final class APIEncoding extends APIObject {
     super.decode(object);
 
     contentType = object.decode('contentType');
-    headers = object.decodeObjectMap('headers', () => APIHeader());
+    headers = object.decodeObjectMap('headers', () => APIHeader()) ?? {};
     allowReserved = object.decode('allowReserved');
     explode = object.decode('explode');
     style = object.decode('style');
@@ -56,7 +56,7 @@ final class APIEncoding extends APIObject {
     super.encode(object);
 
     object.encode('contentType', contentType);
-    object.encodeObjectMap('headers', headers);
+    object.encodeObjectMap('headers', headers, omitEmpty: true);
     object.encode('allowReserved', allowReserved);
     object.encode('explode', explode);
     object.encode('style', style);

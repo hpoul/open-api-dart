@@ -15,7 +15,7 @@ final class APIRequestBody extends APIObject {
     this.description,
     this.isRequired = false,
   }) {
-    content = contentTypes.fold<Map<String, APIMediaType?>>({}, (prev, elem) {
+    content = contentTypes.fold<Map<String, APIMediaType>>({}, (prev, elem) {
       prev[elem] = APIMediaType(schema: schema);
       return prev;
     });
@@ -29,7 +29,7 @@ final class APIRequestBody extends APIObject {
   /// The content of the request body.
   ///
   /// REQUIRED. The key is a media type or media type range and the value describes it. For requests that match multiple keys, only the most specific key is applicable. e.g. text/plain overrides text/*
-  Map<String, APIMediaType?>? content;
+  Map<String, APIMediaType> content = {};
 
   /// Determines if the request body is required in the request.
   ///
@@ -42,18 +42,12 @@ final class APIRequestBody extends APIObject {
 
     description = object.decode('description');
     isRequired = object.decode('required') ?? isRequired;
-    content = object.decodeObjectMap('content', () => APIMediaType())!;
+    content = object.decodeObjectMap('content', () => APIMediaType()) ?? {};
   }
 
   @override
   void encode(KeyedArchive object) {
     super.encode(object);
-
-    if (content == null) {
-      throw ArgumentError(
-        "APIRequestBody must have non-null values for: 'content'.",
-      );
-    }
 
     object.encode('description', description);
     object.encode('required', isRequired);

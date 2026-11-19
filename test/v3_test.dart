@@ -7,7 +7,7 @@ void main() {
   group('Components and resolution', () {
     test('Can resolve object against registry', () {
       final components = APIComponents();
-      components.schemas!['foo'] = APISchemaObject.string();
+      components.schemas['foo'] = APISchemaObject.string();
 
       final ref = APISchemaObject()
         ..referenceURI = Uri.parse('/components/schemas/foo');
@@ -77,11 +77,11 @@ void main() {
       });
 
       expect(
-        doc.components!.schemas!['container']!.referenceURI!.path,
+        doc.components!.schemas['container']!.referenceURI!.path,
         '/components/schemas/string',
       );
 
-      doc.components!.schemas!['other'] = APISchemaObject()
+      doc.components!.schemas['other'] = APISchemaObject()
         ..referenceURI = Uri(path: '/components/schemas/container');
 
       final out = doc.asMap();
@@ -137,18 +137,18 @@ void main() {
 
     test('Has servers', () {
       expect(doc!.servers!.length, 1);
-      expect(doc!.servers!.first!.url.toString(), 'https://api.stripe.com/');
-      expect(doc!.servers!.first!.description, isNull);
-      expect(doc!.servers!.first!.variables, isNull);
+      expect(doc!.servers!.first.url.toString(), 'https://api.stripe.com/');
+      expect(doc!.servers!.first.description, isNull);
+      expect(doc!.servers!.first.variables, isEmpty);
     });
 
     test('Tags', () {
-      expect(doc!.tags, isNull);
+      expect(doc!.tags, isEmpty);
     });
 
     group('Paths', () {
       test('Sample path 1', () {
-        final p = doc!.paths!['/v1/transfers/{transfer}/reversals/{id}'];
+        final p = doc!.paths['/v1/transfers/{transfer}/reversals/{id}'];
         expect(p, isNotNull);
         expect(p!.description, isNull);
 
@@ -159,32 +159,32 @@ void main() {
         final getResponses = getOp.responses;
         expect(getOp.description, contains('10 most recent reversals'));
         expect(getOp.id, 'TransferReversalRetrieve');
-        expect(getParams!.length, 3);
-        expect(getParams[0]!.location, APIParameterLocation.query);
+        expect(getParams.length, 3);
+        expect(getParams[0].location, APIParameterLocation.query);
         expect(
-          getParams[0]!.description,
+          getParams[0].description,
           'Specifies which fields in the response should be expanded.',
         );
-        expect(getParams[0]!.name, 'expand');
-        expect(getParams[0]!.isRequired, false);
-        expect(getParams[0]!.schema!.type, APIType.array);
-        expect(getParams[0]!.schema!.items!.type, APIType.string);
+        expect(getParams[0].name, 'expand');
+        expect(getParams[0].isRequired, false);
+        expect(getParams[0].schema!.type, APIType.array);
+        expect(getParams[0].schema!.items!.type, APIType.string);
 
-        expect(getParams[1]!.location, APIParameterLocation.path);
-        expect(getParams[1]!.name, 'id');
-        expect(getParams[1]!.isRequired, true);
-        expect(getParams[1]!.schema!.type, APIType.string);
+        expect(getParams[1].location, APIParameterLocation.path);
+        expect(getParams[1].name, 'id');
+        expect(getParams[1].isRequired, true);
+        expect(getParams[1].schema!.type, APIType.string);
 
-        expect(getParams[2]!.location, APIParameterLocation.path);
-        expect(getParams[2]!.name, 'transfer');
-        expect(getParams[2]!.isRequired, true);
-        expect(getParams[2]!.schema!.type, APIType.string);
+        expect(getParams[2].location, APIParameterLocation.path);
+        expect(getParams[2].name, 'transfer');
+        expect(getParams[2].isRequired, true);
+        expect(getParams[2].schema!.type, APIType.string);
 
-        expect(getResponses!.length, 2);
-        expect(getResponses['200']!.content!.length, 1);
+        expect(getResponses.length, 2);
+        expect(getResponses['200']!.content.length, 1);
         expect(
           getResponses['200']!
-              .content!['application/json']!
+              .content['application/json']!
               .schema!
               .referenceURI,
           Uri.parse(
@@ -193,12 +193,12 @@ void main() {
         );
 
         final resolvedElement = getResponses['200']!
-            .content!['application/json']!
+            .content['application/json']!
             .schema!
-            .properties!['balance_transaction']!
+            .properties['balance_transaction']!
             .anyOf;
         expect(
-          resolvedElement!.last!.properties!['amount']!.type,
+          resolvedElement.last.properties['amount']!.type,
           APIType.integer,
         );
       });
@@ -228,7 +228,7 @@ void main() {
         },
       });
       expect(
-        doc.paths!.values.first!.operations.values.first?.security,
+        doc.paths.values.first.operations.values.first.security,
         hasLength(1),
       );
     });
@@ -248,7 +248,7 @@ void main() {
       });
 
       expect(
-        doc.components!.schemas!['freeform']!.additionalPropertyPolicy,
+        doc.components!.schemas['freeform']!.additionalPropertyPolicy,
         APISchemaAdditionalPropertyPolicy.freeForm,
       );
 
@@ -277,7 +277,7 @@ void main() {
         },
       });
       expect(
-        doc.components!.schemas!['freeform']!.additionalPropertyPolicy,
+        doc.components!.schemas['freeform']!.additionalPropertyPolicy,
         APISchemaAdditionalPropertyPolicy.freeForm,
       );
       expect(
@@ -321,10 +321,10 @@ void main() {
     test('Can decode operation callbacks', () {
       final doc = APIDocument.fromMap(spec);
       final callback =
-          doc.paths!['/subscribe']!.operations['post']!.callbacks!['onEvent']!;
+          doc.paths['/subscribe']!.operations['post']!.callbacks['onEvent']!;
       expect(callback.paths.keys, [r'{$request.body#/callbackUrl}']);
       expect(
-        callback.paths.values.single.operations['post']!.responses!['200'],
+        callback.paths.values.single.operations['post']!.responses['200'],
         isNotNull,
       );
       expect(callback.extensions, {'x-note': 'extension'});
@@ -376,7 +376,7 @@ void main() {
       },
     });
     final ref =
-        doc.paths!['/subscribe']!.operations['post']!.callbacks!['onEvent']!;
+        doc.paths['/subscribe']!.operations['post']!.callbacks['onEvent']!;
     expect(ref.referenceURI, Uri(path: '/components/callbacks/Event'));
     final resolved = doc.components!.resolve(ref)!;
     expect(resolved.paths.keys, [r'{$request.body#/url}']);
@@ -455,10 +455,8 @@ void main() {
           },
         }),
       );
-      final flow = doc
-          .components!
-          .securitySchemes!['oauth']!
-          .flows!['clientCredentials']!;
+      final flow =
+          doc.components!.securitySchemes['oauth']!.flows['clientCredentials']!;
       expect(flow.scopes, isEmpty);
       expect(flow.tokenURL, Uri.parse('https://example.com/token'));
       expect(json.encode(doc.asMap()), contains('"scopes":{}'));
@@ -502,7 +500,7 @@ void main() {
       final doc = APIDocument.fromMap(
         withRef('#/components/schemas/B/properties/x'),
       );
-      expect(doc.components!.schemas!['A']!.type, APIType.string);
+      expect(doc.components!.schemas['A']!.type, APIType.string);
     });
 
     test('Reference through another reference still resolves', () {
@@ -522,7 +520,7 @@ void main() {
           },
         }),
       );
-      expect(doc.components!.schemas!['C']!.type, APIType.string);
+      expect(doc.components!.schemas['C']!.type, APIType.string);
     });
 
     test('\$ref inside examples and extensions is left alone', () {
@@ -539,7 +537,7 @@ void main() {
           },
         }),
       );
-      expect(doc.components!.schemas!['A']!.type, APIType.object);
+      expect(doc.components!.schemas['A']!.type, APIType.object);
     });
 
     test('Reference to another file throws instead of resolving locally', () {
@@ -575,7 +573,7 @@ void main() {
         }),
       );
       expect(doc.components!.schemas, isEmpty);
-      expect(doc.components!.responses!['NotFound'], isNotNull);
+      expect(doc.components!.responses['NotFound'], isNotNull);
     });
 
     test('Server variable without enum', () {
@@ -591,8 +589,8 @@ void main() {
           ],
         }),
       );
-      final variable = doc.servers!.single!.variables!['host']!;
-      expect(variable.availableValues, isNull);
+      final variable = doc.servers!.single.variables['host']!;
+      expect(variable.availableValues, isEmpty);
       expect(variable.defaultValue, 'example.com');
       final encoded = doc.asMap()['servers'][0]['variables']['host'] as Map;
       expect(encoded.containsKey('enum'), isFalse);
@@ -615,7 +613,7 @@ void main() {
           ],
         }),
       );
-      expect(doc.servers!.single!.variables!['host']!.availableValues, [
+      expect(doc.servers!.single.variables['host']!.availableValues, [
         'a.example.com',
         'b.example.com',
       ]);
@@ -635,7 +633,7 @@ void main() {
           },
         }),
       );
-      final scheme = doc.components!.securitySchemes!['oidc']!;
+      final scheme = doc.components!.securitySchemes['oidc']!;
       expect(scheme.type, APISecuritySchemeType.openIdConnect);
       expect(
         scheme.connectURL,
@@ -661,23 +659,23 @@ void main() {
         'x',
         APIHeader(schema: APISchemaObject.string(format: 'initial')),
       );
-      expect(resp.headers!['x']!.schema!.format, 'initial');
+      expect(resp.headers['x']!.schema!.format, 'initial');
 
       // add more than one
       resp.addHeader(
         'y',
         APIHeader(schema: APISchemaObject.string(format: 'second')),
       );
-      expect(resp.headers!['x']!.schema!.format, 'initial');
-      expect(resp.headers!['y']!.schema!.format, 'second');
+      expect(resp.headers['x']!.schema!.format, 'initial');
+      expect(resp.headers['y']!.schema!.format, 'second');
 
       // cannot replace
       resp.addHeader(
         'y',
         APIHeader(schema: APISchemaObject.string(format: 'third')),
       );
-      expect(resp.headers!['x']!.schema!.format, 'initial');
-      expect(resp.headers!['y']!.schema!.format, 'second');
+      expect(resp.headers['x']!.schema!.format, 'initial');
+      expect(resp.headers['y']!.schema!.format, 'second');
     });
 
     test("'addContent'", () {
@@ -685,19 +683,19 @@ void main() {
 
       // when null
       resp.addContent('x/a', APISchemaObject.string(format: 'initial'));
-      expect(resp.content!['x/a']!.schema!.format, 'initial');
+      expect(resp.content['x/a']!.schema!.format, 'initial');
 
       // add more than one
       resp.addContent('y/a', APISchemaObject.string(format: 'second'));
-      expect(resp.content!['x/a']!.schema!.format, 'initial');
-      expect(resp.content!['y/a']!.schema!.format, 'second');
+      expect(resp.content['x/a']!.schema!.format, 'initial');
+      expect(resp.content['y/a']!.schema!.format, 'second');
 
       // joins schema in oneOf if key exists
       resp.addContent('y/a', APISchemaObject.string(format: 'third'));
-      expect(resp.content!['x/a']!.schema!.format, 'initial');
+      expect(resp.content['x/a']!.schema!.format, 'initial');
 
-      expect(resp.content!['y/a']!.schema!.oneOf!.first!.format, 'second');
-      expect(resp.content!['y/a']!.schema!.oneOf!.last!.format, 'third');
+      expect(resp.content['y/a']!.schema!.oneOf.first.format, 'second');
+      expect(resp.content['y/a']!.schema!.oneOf.last.format, 'third');
     });
 
     test("'addResponse'", () {
@@ -709,7 +707,7 @@ void main() {
         APIResponse.schema('OK', APISchemaObject.string(format: 'initial')),
       );
       expect(
-        op.responses!['200']!.content!['application/json']!.schema!.format,
+        op.responses['200']!.content['application/json']!.schema!.format,
         'initial',
       );
 
@@ -727,11 +725,11 @@ void main() {
         ),
       );
       expect(
-        op.responses!['200']!.content!['application/json']!.schema!.format,
+        op.responses['200']!.content['application/json']!.schema!.format,
         'initial',
       );
       expect(
-        op.responses!['400']!.content!['application/json']!.schema!.format,
+        op.responses['400']!.content['application/json']!.schema!.format,
         'second',
       );
 
@@ -749,16 +747,16 @@ void main() {
         ),
       );
       expect(
-        op.responses!['200']!.content!['application/json']!.schema!.format,
+        op.responses['200']!.content['application/json']!.schema!.format,
         'initial',
       );
 
-      final r400 = op.responses!['400']!;
+      final r400 = op.responses['400']!;
       expect(r400.description, contains('KINDABAD'));
       expect(r400.description, contains('REALBAD'));
-      expect(r400.content!['application/json']!.schema!.oneOf, isNotNull);
-      expect(r400.headers!['initial'], isNotNull);
-      expect(r400.headers!['second'], isNotNull);
+      expect(r400.content['application/json']!.schema!.oneOf, isNotNull);
+      expect(r400.headers['initial'], isNotNull);
+      expect(r400.headers['second'], isNotNull);
     });
 
     test("'addResponse' guards against null value", () {
@@ -772,7 +770,7 @@ void main() {
         ),
       );
       expect(
-        op.responses!['400']!.content!['application/json']!.schema!.format,
+        op.responses['400']!.content['application/json']!.schema!.format,
         'second',
       );
 
@@ -781,12 +779,7 @@ void main() {
         APIResponse.schema('REALBAD', APISchemaObject.string(format: 'third')),
       );
       expect(
-        op
-            .responses!['400']!
-            .content!['application/json']!
-            .schema!
-            .oneOf!
-            .length,
+        op.responses['400']!.content['application/json']!.schema!.oneOf.length,
         2,
       );
     });

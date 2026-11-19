@@ -49,14 +49,14 @@ void main() {
   test('decodes response and component headers', () {
     final doc = APIDocument.fromMap(roundTripJson(spec));
     final headers =
-        doc.paths!['/items']!.operations['get']!.responses!['200']!.headers!;
+        doc.paths['/items']!.operations['get']!.responses['200']!.headers;
     final rateLimit = headers['X-Rate-Limit']!;
     expect(rateLimit.description, 'Requests left');
     expect(rateLimit.isRequired, isTrue);
     expect(rateLimit.isDeprecated, isFalse);
     expect(rateLimit.schema!.type, APIType.integer);
 
-    final trace = doc.components!.headers!['Trace']!;
+    final trace = doc.components!.headers['Trace']!;
     expect(trace.isDeprecated, isTrue);
     expect(trace.schema!.type, APIType.string);
   });

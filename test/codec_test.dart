@@ -43,24 +43,24 @@ void main() {
 
   test('string lists decode as growable List<String>', () {
     final doc = APIDocument.fromMap(spec());
-    final op = doc.paths!['/pets']!.operations['get']!;
+    final op = doc.paths['/pets']!.operations['get']!;
     expect(op.tags, isA<List<String>>());
-    op.tags!.add('more');
+    op.tags.add('more');
 
-    final pet = doc.components!.schemas!['Pet']!;
+    final pet = doc.components!.schemas['Pet']!;
     expect(pet.required, isA<List<String>>());
     // The generator adds to `required`.
-    pet.required!.addAll(['owner']);
+    pet.required.addAll(['owner']);
     expect(pet.required, ['name', 'owner']);
   });
 
   test('a reference exposes the fields of its target', () {
     final doc = APIDocument.fromMap(spec());
     final ref = doc
-        .paths!['/pets']!
+        .paths['/pets']!
         .operations['get']!
-        .responses!['200']!
-        .content!['application/json']!
+        .responses['200']!
+        .content['application/json']!
         .schema!;
     expect(ref.referenceURI, Uri(path: '/components/schemas/Pet'));
     expect(ref.type, APIType.object);
@@ -70,15 +70,15 @@ void main() {
   test('children reached through a reference are the target\'s instances', () {
     // The generator keys generated classes by schema identity.
     final doc = APIDocument.fromMap(spec());
-    final target = doc.components!.schemas!['Pet']!;
+    final target = doc.components!.schemas['Pet']!;
     final ref = doc
-        .paths!['/pets']!
+        .paths['/pets']!
         .operations['get']!
-        .responses!['200']!
-        .content!['application/json']!
+        .responses['200']!
+        .content['application/json']!
         .schema!;
     expect(
-      identical(ref.properties!['owner'], target.properties!['owner']),
+      identical(ref.properties['owner'], target.properties['owner']),
       isTrue,
     );
   });
@@ -89,6 +89,6 @@ void main() {
       <dynamic, dynamic>{'url': 'https://example.com'},
     ];
     final doc = APIDocument.fromMap(raw);
-    expect(doc.servers!.single!.url, 'https://example.com');
+    expect(doc.servers!.single.url, 'https://example.com');
   });
 }
