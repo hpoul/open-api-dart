@@ -1,4 +1,5 @@
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
+import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/discriminator.dart';
 import 'package:open_api_forked/src/v3/external_docs.dart';
@@ -23,7 +24,9 @@ final class APISchemaObject extends APIObject {
 
   @override
   Map<String, Object?> get toStringFields => {
-    'type': type?.jsonValue,
+    'type': types.length > 1
+        ? types.map((t) => t.jsonValue).join('|')
+        : type?.jsonValue,
     'format': format,
     'nullable': (isNullable ?? false) ? true : null,
     'enum': enumerated?.length,
@@ -35,15 +38,15 @@ final class APISchemaObject extends APIObject {
     'anyOf': anyOf,
   };
 
-  APISchemaObject.string({this.format}) : type = APIType.string;
-  APISchemaObject.number() : type = APIType.number;
-  APISchemaObject.integer() : type = APIType.integer;
-  APISchemaObject.boolean() : type = APIType.boolean;
+  APISchemaObject.string({this.format}) : _type = APIType.string;
+  APISchemaObject.number() : _type = APIType.number;
+  APISchemaObject.integer() : _type = APIType.integer;
+  APISchemaObject.boolean() : _type = APIType.boolean;
   APISchemaObject.map({
     APIType? ofType,
     APISchemaObject? ofSchema,
     bool any = false,
-  }) : type = APIType.object {
+  }) : _type = APIType.object {
     if (ofType != null) {
       additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.restricted;
       additionalPropertySchema = APISchemaObject()..type = ofType;
@@ -59,7 +62,7 @@ final class APISchemaObject extends APIObject {
     }
   }
   APISchemaObject.array({APIType? ofType, APISchemaObject? ofSchema})
-    : type = APIType.array {
+    : _type = APIType.array {
     if (ofType != null) {
       items = APISchemaObject()..type = ofType;
     } else if (ofSchema != null) {
@@ -70,13 +73,13 @@ final class APISchemaObject extends APIObject {
       );
     }
   }
-  APISchemaObject.object(this.properties) : type = APIType.object;
+  APISchemaObject.object(this.properties) : _type = APIType.object;
   APISchemaObject.file({bool isBase64Encoded = false})
-    : type = APIType.string,
+    : _type = APIType.string,
       format = isBase64Encoded ? 'byte' : 'binary';
 
   APISchemaObject.freeForm()
-    : type = APIType.object,
+    : _type = APIType.object,
       additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.freeForm;
 
   /// A title for the object.
@@ -102,6 +105,17 @@ final class APISchemaObject extends APIObject {
   ///  value of "maximum".
   bool? exclusiveMaximum;
 
+  /// The exclusive upper limit, as OpenAPI 3.1 writes `exclusiveMaximum`:
+  /// a number instead of a flag for [maximum].
+  ///
+  /// [effectiveExclusiveMaximum] gives the limit for either form.
+  num? exclusiveMaximumValue;
+
+  /// The exclusive upper limit: [exclusiveMaximumValue], or [maximum] when
+  /// [exclusiveMaximum] is true. `null` when there is none.
+  num? get effectiveExclusiveMaximum =>
+      exclusiveMaximumValue ?? (exclusiveMaximum == true ? maximum : null);
+
   /// The value of "minimum" MUST be a number, representing a lower limit
   /// for a numeric instance.
 
@@ -120,6 +134,17 @@ final class APISchemaObject extends APIObject {
   /// false (or not specified), then a numeric instance MAY be equal to the
   /// value of "minimum".
   bool? exclusiveMinimum;
+
+  /// The exclusive lower limit, as OpenAPI 3.1 writes `exclusiveMinimum`:
+  /// a number instead of a flag for [minimum].
+  ///
+  /// [effectiveExclusiveMinimum] gives the limit for either form.
+  num? exclusiveMinimumValue;
+
+  /// The exclusive lower limit: [exclusiveMinimumValue], or [minimum] when
+  /// [exclusiveMinimum] is true. `null` when there is none.
+  num? get effectiveExclusiveMinimum =>
+      exclusiveMinimumValue ?? (exclusiveMinimum == true ? minimum : null);
 
   /// The value of this keyword MUST be a non-negative integer.
   ///
@@ -222,9 +247,59 @@ final class APISchemaObject extends APIObject {
   /// is equal to one of the elements in this keyword's array value.
   List<dynamic>? enumerated;
 
+  /// The single value an instance must equal (`const`, OpenAPI 3.1), kept
+  /// as decoded. `null` when absent, and also for `const: null`.
+  Object? constValue;
+
+  /// Examples of instances of this schema (`examples`, OpenAPI 3.1), kept
+  /// as decoded. See also [example].
+  List<Object?>? examples;
+
+  /// The media type of the contents of a string (`contentMediaType`,
+  /// OpenAPI 3.1), such as `image/png`.
+  String? contentMediaType;
+
+  /// How a string encodes binary contents (`contentEncoding`, OpenAPI 3.1),
+  /// such as `base64`.
+  String? contentEncoding;
+
   /* Modified JSON Schema for OpenAPI */
 
-  APIType? type;
+  /// The type of instances, when there is exactly one besides `null`.
+  ///
+  /// OpenAPI 3.1 may give several types, as in `type: [string, integer]`;
+  /// then this is `null` and [types] has them. A `"null"` type makes
+  /// [isNullable] true instead of appearing here. Setting this replaces
+  /// [types] with just this type.
+  APIType? get type => _type;
+
+  set type(APIType? value) {
+    _type = value;
+    _types = null;
+    _typeIsList = false;
+  }
+
+  /// All types besides `null`, in document order: empty when there are
+  /// none, `[type]` for a single one.
+  ///
+  /// Setting this writes `type` as an array, as OpenAPI 3.1 does. Types
+  /// this package does not know are left out.
+  List<APIType> get types => _types ?? [?_type];
+
+  set types(List<APIType> value) {
+    _types = List.unmodifiable(value);
+    _type = value.length == 1 ? value.single : null;
+    _typeIsList = true;
+  }
+
+  APIType? _type;
+  List<APIType>? _types;
+
+  /// Whether `type` was an array, so it is written as one again.
+  bool _typeIsList = false;
+
+  /// Whether `type` had `"null"` (OpenAPI 3.1).
+  bool _nullType = false;
   List<APISchemaObject> allOf = [];
   List<APISchemaObject> anyOf = [];
   List<APISchemaObject> oneOf = [];
@@ -247,10 +322,23 @@ final class APISchemaObject extends APIObject {
   String? format;
   dynamic defaultValue;
 
-  bool? get isNullable => _nullable ?? false;
+  /// Whether `null` is allowed: `nullable: true` (OpenAPI 3.0), or a
+  /// `"null"` type (3.1).
+  ///
+  /// Setting it keeps the form the schema was decoded in: a schema whose
+  /// `type` had `"null"` or was an array adds or removes `"null"` there,
+  /// any other schema writes `nullable`.
+  bool? get isNullable => (_nullable ?? false) || _nullType;
 
   set isNullable(bool? n) {
-    _nullable = n;
+    if (_typeIsList || _nullType) {
+      _nullType = n ?? false;
+      if (_nullable != null) {
+        _nullable = n;
+      }
+    } else {
+      _nullable = n;
+    }
   }
 
   bool? get isReadOnly => _readOnly ?? false;
@@ -295,9 +383,19 @@ final class APISchemaObject extends APIObject {
 
     title = object.decode('title');
     maximum = object.decode('maximum');
-    exclusiveMaximum = object.decode('exclusiveMaximum');
+    final (exclusiveMax, exclusiveMaxValue) = _exclusiveLimit(
+      object,
+      'exclusiveMaximum',
+    );
+    exclusiveMaximum = exclusiveMax;
+    exclusiveMaximumValue = exclusiveMaxValue;
     minimum = object.decode('minimum');
-    exclusiveMinimum = object.decode('exclusiveMinimum');
+    final (exclusiveMin, exclusiveMinValue) = _exclusiveLimit(
+      object,
+      'exclusiveMinimum',
+    );
+    exclusiveMinimum = exclusiveMin;
+    exclusiveMinimumValue = exclusiveMinValue;
     maxLength = object.decode('maxLength');
     minLength = object.decode('minLength');
     pattern = object.decode('pattern');
@@ -312,7 +410,12 @@ final class APISchemaObject extends APIObject {
 
     //
 
-    type = APIType.fromJson(object.decode('type'));
+    _decodeType(object);
+    constValue = object.decode<Object?>('const');
+    final examples = object.decode<Object?>('examples');
+    this.examples = examples is List ? List<Object?>.of(examples) : null;
+    contentMediaType = object.decode('contentMediaType');
+    contentEncoding = object.decode('contentEncoding');
     allOf = object.decodeObjects('allOf', () => APISchemaObject()) ?? [];
     anyOf = object.decodeObjects('anyOf', () => APISchemaObject()) ?? [];
     oneOf = object.decodeObjects('oneOf', () => APISchemaObject()) ?? [];
@@ -368,9 +471,15 @@ final class APISchemaObject extends APIObject {
 
     object.encode('title', title);
     object.encode('maximum', maximum);
-    object.encode('exclusiveMaximum', exclusiveMaximum);
+    object.encode(
+      'exclusiveMaximum',
+      exclusiveMaximumValue ?? exclusiveMaximum,
+    );
     object.encode('minimum', minimum);
-    object.encode('exclusiveMinimum', exclusiveMinimum);
+    object.encode(
+      'exclusiveMinimum',
+      exclusiveMinimumValue ?? exclusiveMinimum,
+    );
     object.encode('maxLength', maxLength);
     object.encode('minLength', minLength);
     object.encode('pattern', pattern);
@@ -385,7 +494,19 @@ final class APISchemaObject extends APIObject {
 
     //
 
-    object.encode('type', type?.jsonValue);
+    final typeNames = [
+      for (final type in types) type.jsonValue,
+      if (_nullType) 'null',
+    ];
+    if (_typeIsList || typeNames.length > 1) {
+      object.encode('type', typeNames);
+    } else if (typeNames.isNotEmpty) {
+      object.encode('type', typeNames.single);
+    }
+    object.encode('const', constValue);
+    object.encode('examples', examples);
+    object.encode('contentMediaType', contentMediaType);
+    object.encode('contentEncoding', contentEncoding);
     object.encodeObjects('allOf', allOf, omitEmpty: true);
     object.encodeObjects('anyOf', anyOf, omitEmpty: true);
     object.encodeObjects('oneOf', oneOf, omitEmpty: true);
@@ -418,4 +539,60 @@ final class APISchemaObject extends APIObject {
     object.encodeObject('xml', xml);
     object.encode('example', example);
   }
+
+  void _decodeType(KeyedArchive object) {
+    _type = null;
+    _types = null;
+    _typeIsList = false;
+    _nullType = false;
+    switch (object.decode<Object?>('type')) {
+      case null:
+        break;
+      case 'null':
+        _nullType = true;
+      case final String name:
+        _type = APIType.fromJson(name);
+      case final List<Object?> names:
+        _typeIsList = true;
+        final types = <APIType>[];
+        for (final name in names) {
+          if (name == 'null') {
+            _nullType = true;
+          } else if (name is String) {
+            final type = APIType.fromJson(name);
+            if (type != null) {
+              types.add(type);
+            }
+          } else {
+            throw OpenApiFormatException(
+              'Schema type must be a string or an array of strings.',
+              pointer: object.pointerTo('type'),
+              source: names,
+            );
+          }
+        }
+        _types = List.unmodifiable(types);
+        _type = types.length == 1 ? types.single : null;
+      case final other:
+        throw OpenApiFormatException(
+          'Schema type must be a string or an array of strings.',
+          pointer: object.pointerTo('type'),
+          source: other,
+        );
+    }
+  }
+
+  /// Reads `exclusiveMaximum`/`exclusiveMinimum`, a flag in OpenAPI 3.0 and
+  /// a number in 3.1.
+  static (bool?, num?) _exclusiveLimit(KeyedArchive object, String key) =>
+      switch (object.decode<Object?>(key)) {
+        null => (null, null),
+        final bool flag => (flag, null),
+        final num limit => (null, limit),
+        final other => throw OpenApiFormatException(
+          '$key must be a boolean (OpenAPI 3.0) or a number (3.1).',
+          pointer: object.pointerTo(key),
+          source: other,
+        ),
+      };
 }

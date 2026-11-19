@@ -130,6 +130,18 @@ final class KeyedArchive extends Object
 
   /// The object being encoded into this archive, if any.
   APIObject? _source;
+
+  /// When set, only these keys are encoded: the keys next to a `$ref`.
+  Set<String>? _onlyKeys;
+
+  bool _skips(String key) {
+    final only = _onlyKeys;
+    return only != null && !only.contains(key);
+  }
+
+  /// Reference objects whose sibling keys are being encoded, to stop when
+  /// a sibling leads back to the same object.
+  static final Set<APIObject> _encodingSiblings = Set.identity();
   KeyedArchive? _objectReference;
 
   @override
@@ -470,11 +482,6 @@ final class KeyedArchive extends Object
       return null;
     }
 
-    // todo: an object can override the values it inherits from its
-    // reference object. These values are siblings to the $ref key.
-    // they are currently not being emitted. the solution is probably tricky.
-    // letting encode run as normal would stack overflow when there is a cyclic
-    // reference between this object and another.
     final json = KeyedArchive._empty()
       .._map = {}
       .._source = object
@@ -482,6 +489,24 @@ final class KeyedArchive extends Object
     final referenceURI = json.referenceURI;
     if (referenceURI != null) {
       json._map[r'$ref'] = Uri(fragment: referenceURI.path).toString();
+      // Keys next to the `$ref` (OpenAPI 3.1). A decoded reference object
+      // also holds its target's values, so encode only those keys. A
+      // sibling such as `properties` can lead back to this object; it is
+      // then written as a bare `$ref`.
+      final siblings = object.referenceSiblingKeys;
+      if (siblings.isNotEmpty && _encodingSiblings.add(object)) {
+        try {
+          final only = KeyedArchive._empty()
+            .._map = {}
+            .._source = object
+            .._onlyKeys = siblings;
+          object.encode(only);
+          only._map.remove(r'$ref');
+          json._map.addAll(only._map);
+        } finally {
+          _encodingSiblings.remove(object);
+        }
+      }
     } else {
       object.encode(json);
     }
@@ -497,7 +522,9 @@ final class KeyedArchive extends Object
   /// in the resulting archive. If [omitEmpty] is true, an empty map or list
   /// is only encoded if the decoded input had one for [key].
   void encode(String key, dynamic value, {bool omitEmpty = false}) {
-    if (value == null || (omitEmpty && _omitEmpty(key, value as Object))) {
+    if (_skips(key) ||
+        value == null ||
+        (omitEmpty && _omitEmpty(key, value as Object))) {
       return;
     }
 
@@ -515,7 +542,7 @@ final class KeyedArchive extends Object
   /// This invokes [APIObject.encode] on [value] and adds the object
   /// to this archive for the key [key].
   void encodeObject(String key, APIObject? value) {
-    if (value == null) {
+    if (value == null || _skips(key)) {
       return;
     }
 
@@ -534,7 +561,7 @@ final class KeyedArchive extends Object
     List<APIObject?>? value, {
     bool omitEmpty = false,
   }) {
-    if (value == null || (omitEmpty && _omitEmpty(key, value))) {
+    if (_skips(key) || value == null || (omitEmpty && _omitEmpty(key, value))) {
       return;
     }
 
@@ -553,7 +580,7 @@ final class KeyedArchive extends Object
     Map<String, T?>? value, {
     bool omitEmpty = false,
   }) {
-    if (value == null || (omitEmpty && _omitEmpty(key, value))) {
+    if (_skips(key) || value == null || (omitEmpty && _omitEmpty(key, value))) {
       return;
     }
 
