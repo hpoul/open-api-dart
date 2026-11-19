@@ -8,7 +8,38 @@ class APIServerDescription extends APIObject {
   /// A URL to the target host.
   ///
   /// REQUIRED. This URL supports Server Variables and MAY be relative, to indicate that the host location is relative to the location where the OpenAPI document is being served. Variable substitutions will be made when a variable is named in {brackets}.
-  Uri? url;
+  ///
+  /// This is a template, not a [Uri]: parsing `{scheme}://{host}` as a [Uri]
+  /// mangles it. Use [resolve] to substitute the variables.
+  String? url;
+
+  /// Returns [url] with every `{variable}` replaced by its value in [values],
+  /// or else by the variable's default, as a [Uri].
+  ///
+  /// Values are inserted as they are, without percent-encoding (so a value
+  /// such as `/v2` keeps its slash) and without checking them against the
+  /// variable's `enum`.
+  ///
+  /// Throws an [ArgumentError] if a variable has neither, a [StateError] if
+  /// there is no [url], and a [FormatException] if the result is not a valid
+  /// URI.
+  Uri resolve([Map<String, String> values = const {}]) {
+    final template = url;
+    if (template == null) {
+      throw StateError('APIServerDescription has no url.');
+    }
+    final resolved = template.replaceAllMapped(RegExp(r'\{([^{}]+)\}'), (m) {
+      final name = m[1]!;
+      final value = values[name] ?? variables?[name]?.defaultValue;
+      if (value == null) {
+        throw ArgumentError(
+          "No value for server variable '$name' in '$template'.",
+        );
+      }
+      return value;
+    });
+    return Uri.parse(resolved);
+  }
 
   /// An optional string describing the host designated by the URL.
   ///
@@ -24,8 +55,7 @@ class APIServerDescription extends APIObject {
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    final url = object.decode<String>('url');
-    this.url = url != null ? Uri.tryParse(url) : null;
+    url = object.decode('url');
     description = object.decode('description');
     variables = object.decodeObjectMap(
       'variables',
