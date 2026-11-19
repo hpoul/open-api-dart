@@ -13,23 +13,26 @@ class APICallback extends APIObject {
   /// The key that identifies the [APIPath] is a runtime expression that can be evaluated in the context of a runtime HTTP request/response to identify the URL to be used for the callback request. A simple example might be $request.body#/url.
   Map<String, APIPath> paths;
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
     paths = {};
     for (final key in object.keys) {
       // Extensions are decoded by `super.decode`.
-      if (key.startsWith("x-") || key == r"$ref") {
+      if (key.startsWith('x-') || key == r'$ref') {
         continue;
       }
       if (object[key] is! KeyedArchive) {
         throw ArgumentError(
-            "Invalid specification. Callback contains non-object value.");
+          'Invalid specification. Callback contains non-object value.',
+        );
       }
       paths[key] = object.decodeObject(key, () => APIPath())!;
     }
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 

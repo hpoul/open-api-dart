@@ -4,6 +4,12 @@
 
 - **Breaking:** removed Swagger 2.0 support (`package:open_api_forked/v2.dart`
   and everything under `lib/src/v2`). Use 3.0.x if you need it.
+- **Breaking:** requires Dart 3.8 (`sdk: ^3.8.0`).
+- Analysis with `strict-casts`, `strict-inference` and `strict-raw-types`,
+  lints 6, and `dart fix` applied (single quotes, `@override`, ...).
+- Getter/setter pairs that only wrapped a private field are plain fields now
+  (`explode`, `allowReserved`, `allowEmptyValue`, `isDeprecated`,
+  `isRequired`). Same names and types, so callers are unaffected.
 
 ## 3.0.1
 

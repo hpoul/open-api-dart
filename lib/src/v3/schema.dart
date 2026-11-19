@@ -10,7 +10,7 @@ enum APISchemaAdditionalPropertyPolicy {
   freeForm,
 
   /// When [APISchemaObject.additionalPropertySchema] contains a schema object
-  restricted
+  restricted,
 }
 
 /// Represents a schema object in the OpenAPI specification.
@@ -22,9 +22,11 @@ class APISchemaObject extends APIObject {
   APISchemaObject.number() : type = APIType.number;
   APISchemaObject.integer() : type = APIType.integer;
   APISchemaObject.boolean() : type = APIType.boolean;
-  APISchemaObject.map(
-      {APIType? ofType, APISchemaObject? ofSchema, bool any: false})
-      : type = APIType.object {
+  APISchemaObject.map({
+    APIType? ofType,
+    APISchemaObject? ofSchema,
+    bool any = false,
+  }) : type = APIType.object {
     if (ofType != null) {
       additionalPropertySchema = APISchemaObject()..type = ofType;
     } else if (ofSchema != null) {
@@ -32,28 +34,30 @@ class APISchemaObject extends APIObject {
     } else if (any) {
     } else {
       throw ArgumentError(
-          "Invalid 'APISchemaObject.map' with neither 'ofType', 'any' or 'ofSchema' specified.");
+        "Invalid 'APISchemaObject.map' with neither 'ofType', 'any' or 'ofSchema' specified.",
+      );
     }
   }
   APISchemaObject.array({APIType? ofType, APISchemaObject? ofSchema})
-      : type = APIType.array {
+    : type = APIType.array {
     if (ofType != null) {
       items = APISchemaObject()..type = ofType;
     } else if (ofSchema != null) {
       items = ofSchema;
     } else {
       throw ArgumentError(
-          "Invalid 'APISchemaObject.array' with neither 'ofType' or 'ofSchema' specified.");
+        "Invalid 'APISchemaObject.array' with neither 'ofType' or 'ofSchema' specified.",
+      );
     }
   }
   APISchemaObject.object(this.properties) : type = APIType.object;
-  APISchemaObject.file({bool isBase64Encoded: false})
-      : type = APIType.string,
-        format = isBase64Encoded ? "byte" : "binary";
+  APISchemaObject.file({bool isBase64Encoded = false})
+    : type = APIType.string,
+      format = isBase64Encoded ? 'byte' : 'binary';
 
   APISchemaObject.freeForm()
-      : type = APIType.object,
-        additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.freeForm;
+    : type = APIType.object,
+      additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.freeForm;
 
   /// A title for the object.
   String? title;
@@ -247,40 +251,43 @@ class APISchemaObject extends APIObject {
   bool? _deprecated;
 
   @override
-  Map<String, cast.Cast> get castMap => {"required": cast.List(cast.String)};
+  Map<String, cast.Cast<dynamic>> get castMap => {
+    'required': cast.List(cast.String),
+  };
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    title = object.decode("title");
-    maximum = object.decode("maximum");
-    exclusiveMaximum = object.decode("exclusiveMaximum");
-    minimum = object.decode("minimum");
-    exclusiveMinimum = object.decode("exclusiveMinimum");
-    maxLength = object.decode("maxLength");
-    minLength = object.decode("minLength");
-    pattern = object.decode("pattern");
-    maxItems = object.decode("maxItems");
-    minItems = object.decode("minItems");
-    uniqueItems = object.decode("uniqueItems");
-    multipleOf = object.decode("multipleOf");
-    enumerated = object.decode("enum");
-    minProperties = object.decode("minProperties");
-    maxProperties = object.decode("maxProperties");
-    required = object.decode("required");
+    title = object.decode('title');
+    maximum = object.decode('maximum');
+    exclusiveMaximum = object.decode('exclusiveMaximum');
+    minimum = object.decode('minimum');
+    exclusiveMinimum = object.decode('exclusiveMinimum');
+    maxLength = object.decode('maxLength');
+    minLength = object.decode('minLength');
+    pattern = object.decode('pattern');
+    maxItems = object.decode('maxItems');
+    minItems = object.decode('minItems');
+    uniqueItems = object.decode('uniqueItems');
+    multipleOf = object.decode('multipleOf');
+    enumerated = object.decode('enum');
+    minProperties = object.decode('minProperties');
+    maxProperties = object.decode('maxProperties');
+    required = object.decode('required');
 
     //
 
-    type = APITypeCodec.decode(object.decode("type"));
-    allOf = object.decodeObjects("allOf", () => APISchemaObject());
-    anyOf = object.decodeObjects("anyOf", () => APISchemaObject());
-    oneOf = object.decodeObjects("oneOf", () => APISchemaObject());
-    not = object.decodeObject("not", () => APISchemaObject());
+    type = APITypeCodec.decode(object.decode('type'));
+    allOf = object.decodeObjects('allOf', () => APISchemaObject());
+    anyOf = object.decodeObjects('anyOf', () => APISchemaObject());
+    oneOf = object.decodeObjects('oneOf', () => APISchemaObject());
+    not = object.decodeObject('not', () => APISchemaObject());
 
-    items = object.decodeObject("items", () => APISchemaObject());
-    properties = object.decodeObjectMap("properties", () => APISchemaObject());
+    items = object.decodeObject('items', () => APISchemaObject());
+    properties = object.decodeObjectMap('properties', () => APISchemaObject());
 
-    final addlProps = object["additionalProperties"];
+    final addlProps = object['additionalProperties'];
     if (addlProps is bool) {
       if (addlProps) {
         additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.freeForm;
@@ -291,69 +298,72 @@ class APISchemaObject extends APIObject {
       additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.freeForm;
     } else {
       additionalPropertyPolicy = APISchemaAdditionalPropertyPolicy.restricted;
-      additionalPropertySchema =
-          object.decodeObject("additionalProperties", () => APISchemaObject());
+      additionalPropertySchema = object.decodeObject(
+        'additionalProperties',
+        () => APISchemaObject(),
+      );
     }
 
-    description = object.decode("description");
-    format = object.decode("format");
-    defaultValue = object.decode("default");
+    description = object.decode('description');
+    format = object.decode('format');
+    defaultValue = object.decode<Object?>('default');
 
-    _nullable = object.decode("nullable");
-    _readOnly = object.decode("readOnly");
-    _writeOnly = object.decode("writeOnly");
-    _deprecated = object.decode("deprecated");
+    _nullable = object.decode('nullable');
+    _readOnly = object.decode('readOnly');
+    _writeOnly = object.decode('writeOnly');
+    _deprecated = object.decode('deprecated');
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
-    object.encode("title", title);
-    object.encode("maximum", maximum);
-    object.encode("exclusiveMaximum", exclusiveMaximum);
-    object.encode("minimum", minimum);
-    object.encode("exclusiveMinimum", exclusiveMinimum);
-    object.encode("maxLength", maxLength);
-    object.encode("minLength", minLength);
-    object.encode("pattern", pattern);
-    object.encode("maxItems", maxItems);
-    object.encode("minItems", minItems);
-    object.encode("uniqueItems", uniqueItems);
-    object.encode("multipleOf", multipleOf);
-    object.encode("enum", enumerated);
-    object.encode("minProperties", minProperties);
-    object.encode("maxProperties", maxProperties);
-    object.encode("required", required);
+    object.encode('title', title);
+    object.encode('maximum', maximum);
+    object.encode('exclusiveMaximum', exclusiveMaximum);
+    object.encode('minimum', minimum);
+    object.encode('exclusiveMinimum', exclusiveMinimum);
+    object.encode('maxLength', maxLength);
+    object.encode('minLength', minLength);
+    object.encode('pattern', pattern);
+    object.encode('maxItems', maxItems);
+    object.encode('minItems', minItems);
+    object.encode('uniqueItems', uniqueItems);
+    object.encode('multipleOf', multipleOf);
+    object.encode('enum', enumerated);
+    object.encode('minProperties', minProperties);
+    object.encode('maxProperties', maxProperties);
+    object.encode('required', required);
 
     //
 
-    object.encode("type", APITypeCodec.encode(type));
-    object.encodeObjects("allOf", allOf);
-    object.encodeObjects("anyOf", anyOf);
-    object.encodeObjects("oneOf", oneOf);
-    object.encodeObject("not", not);
+    object.encode('type', APITypeCodec.encode(type));
+    object.encodeObjects('allOf', allOf);
+    object.encodeObjects('anyOf', anyOf);
+    object.encodeObjects('oneOf', oneOf);
+    object.encodeObject('not', not);
 
-    object.encodeObject("items", items);
+    object.encodeObject('items', items);
     if (additionalPropertyPolicy != null || additionalPropertySchema != null) {
       if (additionalPropertyPolicy ==
           APISchemaAdditionalPropertyPolicy.disallowed) {
-        object.encode("additionalProperties", false);
+        object.encode('additionalProperties', false);
       } else if (additionalPropertyPolicy ==
           APISchemaAdditionalPropertyPolicy.freeForm) {
-        object.encode("additionalProperties", true);
+        object.encode('additionalProperties', true);
       } else {
-        object.encodeObject("additionalProperties", additionalPropertySchema);
+        object.encodeObject('additionalProperties', additionalPropertySchema);
       }
     }
-    object.encodeObjectMap("properties", properties);
+    object.encodeObjectMap('properties', properties);
 
-    object.encode("description", description);
-    object.encode("format", format);
-    object.encode("default", defaultValue);
+    object.encode('description', description);
+    object.encode('format', format);
+    object.encode('default', defaultValue);
 
-    object.encode("nullable", _nullable);
-    object.encode("readOnly", _readOnly);
-    object.encode("writeOnly", _writeOnly);
-    object.encode("deprecated", _deprecated);
+    object.encode('nullable', _nullable);
+    object.encode('readOnly', _readOnly);
+    object.encode('writeOnly', _writeOnly);
+    object.encode('deprecated', _deprecated);
   }
 }

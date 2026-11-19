@@ -1,6 +1,5 @@
 import 'package:codable_forked/codable.dart';
 import 'package:open_api_forked/src/v3/parameter.dart';
-import 'package:open_api_forked/src/v3/schema.dart';
 
 /// [APIHeader] follows the structure of the [APIParameter] with the following changes:
 ///
@@ -8,15 +7,15 @@ import 'package:open_api_forked/src/v3/schema.dart';
 /// in MUST NOT be specified, it is implicitly in header.
 /// All traits that are affected by the location MUST be applicable to a location of header (for example, style).
 class APIHeader extends APIParameter {
-  APIHeader({APISchemaObject? schema}) : super.header(null, schema: schema);
+  APIHeader({super.schema}) : super.header(null);
   APIHeader.empty() : super.header(null);
 
   @override
   void encode(KeyedArchive object) {
-    name = "temporary";
+    name = 'temporary';
     super.encode(object);
-    object.remove("name");
-    object.remove("in");
+    object.remove('name');
+    object.remove('in');
     name = null;
   }
 }

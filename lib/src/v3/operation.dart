@@ -13,15 +13,18 @@ import 'package:open_api_forked/src/v3/server.dart';
 class APIOperation extends APIObject {
   APIOperation.empty();
 
-  APIOperation(this.id, this.responses,
-      {this.tags,
-      this.summary,
-      this.description,
-      this.parameters,
-      this.security,
-      this.requestBody,
-      this.callbacks,
-      bool? deprecated}) {
+  APIOperation(
+    this.id,
+    this.responses, {
+    this.tags,
+    this.summary,
+    this.description,
+    this.parameters,
+    this.security,
+    this.requestBody,
+    this.callbacks,
+    bool? deprecated,
+  }) {
     isDeprecated = deprecated;
   }
 
@@ -76,13 +79,7 @@ class APIOperation extends APIObject {
   /// Declares this operation to be deprecated.
   ///
   /// Consumers SHOULD refrain from usage of the declared operation. Default value is false.
-  bool? get isDeprecated => _deprecated;
-
-  set isDeprecated(bool? f) {
-    _deprecated = f;
-  }
-
-  bool? _deprecated;
+  bool? isDeprecated;
 
   /// Returns the parameter named [name] or null if it doesn't exist.
   APIParameter? parameterNamed(String name) =>
@@ -114,7 +111,7 @@ class APIOperation extends APIObject {
   void addResponse(int statusCode, APIResponse response) {
     final responses = this.responses ??= {};
 
-    final key = "$statusCode";
+    final key = '$statusCode';
 
     final existingResponse = responses[key];
     if (existingResponse == null) {
@@ -133,45 +130,56 @@ class APIOperation extends APIObject {
   }
 
   @override
-  Map<String, cast.Cast> get castMap => {"tags": cast.List(cast.String)};
+  Map<String, cast.Cast<dynamic>> get castMap => {
+    'tags': cast.List(cast.String),
+  };
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    tags = object.decode("tags");
-    summary = object.decode("summary");
-    description = object.decode("description");
-    id = object.decode("operationId");
-    parameters = object.decodeObjects("parameters", () => APIParameter.empty());
-    requestBody =
-        object.decodeObject("requestBody", () => APIRequestBody.empty());
-    responses = object.decodeObjectMap("responses", () => APIResponse.empty());
-    callbacks = object.decodeObjectMap("callbacks", () => APICallback());
-    _deprecated = object.decode("deprecated");
-    security =
-        object.decodeObjects("security", () => APISecurityRequirement.empty());
-    servers =
-        object.decodeObjects("servers", () => APIServerDescription.empty());
+    tags = object.decode('tags');
+    summary = object.decode('summary');
+    description = object.decode('description');
+    id = object.decode('operationId');
+    parameters = object.decodeObjects('parameters', () => APIParameter.empty());
+    requestBody = object.decodeObject(
+      'requestBody',
+      () => APIRequestBody.empty(),
+    );
+    responses = object.decodeObjectMap('responses', () => APIResponse.empty());
+    callbacks = object.decodeObjectMap('callbacks', () => APICallback());
+    isDeprecated = object.decode('deprecated');
+    security = object.decodeObjects(
+      'security',
+      () => APISecurityRequirement.empty(),
+    );
+    servers = object.decodeObjects(
+      'servers',
+      () => APIServerDescription.empty(),
+    );
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
     if (responses == null) {
       throw ArgumentError(
-          "Invalid specification. APIOperation must have non-null values for: 'responses'.");
+        "Invalid specification. APIOperation must have non-null values for: 'responses'.",
+      );
     }
 
-    object.encode("tags", tags);
-    object.encode("summary", summary);
-    object.encode("description", description);
-    object.encode("operationId", id);
-    object.encodeObjects("parameters", parameters);
-    object.encodeObject("requestBody", requestBody);
-    object.encodeObjectMap("responses", responses);
-    object.encodeObjectMap("callbacks", callbacks);
-    object.encode("deprecated", _deprecated);
-    object.encodeObjects("security", security);
-    object.encodeObjects("servers", servers);
+    object.encode('tags', tags);
+    object.encode('summary', summary);
+    object.encode('description', description);
+    object.encode('operationId', id);
+    object.encodeObjects('parameters', parameters);
+    object.encodeObject('requestBody', requestBody);
+    object.encodeObjectMap('responses', responses);
+    object.encodeObjectMap('callbacks', callbacks);
+    object.encode('deprecated', isDeprecated);
+    object.encodeObjects('security', security);
+    object.encodeObjects('servers', servers);
   }
 }

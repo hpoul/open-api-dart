@@ -22,18 +22,18 @@ class APIDocument extends APIObject {
   /// Keys whose values are free-form data, not OpenAPI objects. A `$ref`
   /// in there is just data, so it is not checked.
   static const _freeFormKeys = {
-    "example",
-    "examples",
-    "default",
-    "enum",
-    "value"
+    'example',
+    'examples',
+    'default',
+    'enum',
+    'value',
   };
 
   /// Validates every `$ref` in [node] before [KeyedArchive] resolves them,
   /// so that bad references fail with a clear message instead of a
   /// [TypeError], and references into other files are not silently
   /// resolved against this document.
-  static void _checkReferences(Map root, dynamic node) {
+  static void _checkReferences(Map<String, dynamic> root, Object? node) {
     if (node is List) {
       for (final item in node) {
         _checkReferences(root, item);
@@ -43,22 +43,24 @@ class APIDocument extends APIObject {
     if (node is! Map) {
       return;
     }
-    final ref = node[r"$ref"];
+    final ref = node[r'$ref'];
     if (ref is String) {
-      if (!ref.startsWith("#")) {
+      if (!ref.startsWith('#')) {
         throw ArgumentError(
-            "Invalid document. Reference '$ref' is not a local reference "
-            "('#/...'); references to other documents are not supported.");
+          "Invalid document. Reference '$ref' is not a local reference "
+          "('#/...'); references to other documents are not supported.",
+        );
       }
       if (_resolvePointer(root, ref) is! Map) {
         throw ArgumentError(
-            "Invalid document. Reference '$ref' does not point to an object "
-            "in document.");
+          "Invalid document. Reference '$ref' does not point to an object "
+          'in document.',
+        );
       }
     }
     node.forEach((key, value) {
       if (key is String &&
-          (key.startsWith("x-") || _freeFormKeys.contains(key))) {
+          (key.startsWith('x-') || _freeFormKeys.contains(key))) {
         return;
       }
       _checkReferences(root, value);
@@ -67,7 +69,11 @@ class APIDocument extends APIObject {
 
   /// Walks [ref] from [root] the way [KeyedArchive] resolves it, including
   /// following `$ref`s met along the way.
-  static dynamic _resolvePointer(Map root, String ref, [int depth = 0]) {
+  static dynamic _resolvePointer(
+    Map<String, dynamic> root,
+    String ref, [
+    int depth = 0,
+  ]) {
     if (depth > 32) {
       return null;
     }
@@ -77,8 +83,8 @@ class APIDocument extends APIObject {
         return null;
       }
       final next = target[segment];
-      final via = target[r"$ref"];
-      if (next == null && via is String && via.startsWith("#")) {
+      final via = target[r'$ref'];
+      if (next == null && via is String && via.startsWith('#')) {
         final resolved = _resolvePointer(root, via, depth + 1);
         target = resolved is Map ? resolved[segment] : null;
       } else {
@@ -91,7 +97,7 @@ class APIDocument extends APIObject {
   /// This string MUST be the semantic version number of the OpenAPI Specification version that the OpenAPI document uses.
   ///
   /// REQUIRED. The openapi field SHOULD be used by tooling specifications and clients to interpret the OpenAPI document. This is not related to the API info.version string.
-  String? version = "3.0.0";
+  String? version = '3.0.0';
 
   /// Provides metadata about the API.
   ///
@@ -125,34 +131,41 @@ class APIDocument extends APIObject {
     return KeyedArchive.archive(this, allowReferences: true);
   }
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    version = object.decode("openapi");
-    info = object.decodeObject("info", () => APIInfo.empty())!;
-    servers =
-        object.decodeObjects("servers", () => APIServerDescription.empty());
-    paths = object.decodeObjectMap("paths", () => APIPath());
-    components = object.decodeObject("components", () => APIComponents());
-    security =
-        object.decodeObjects("security", () => APISecurityRequirement.empty());
-    tags = object.decodeObjects("tags", () => APITag.empty());
+    version = object.decode('openapi');
+    info = object.decodeObject('info', () => APIInfo.empty())!;
+    servers = object.decodeObjects(
+      'servers',
+      () => APIServerDescription.empty(),
+    );
+    paths = object.decodeObjectMap('paths', () => APIPath());
+    components = object.decodeObject('components', () => APIComponents());
+    security = object.decodeObjects(
+      'security',
+      () => APISecurityRequirement.empty(),
+    );
+    tags = object.decodeObjects('tags', () => APITag.empty());
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
     if (version == null || info == null || paths == null) {
       throw ArgumentError(
-          "APIDocument must have non-null values for: 'version', 'info', 'paths'.");
+        "APIDocument must have non-null values for: 'version', 'info', 'paths'.",
+      );
     }
 
-    object.encode("openapi", version);
-    object.encodeObject("info", info);
-    object.encodeObjects("servers", servers);
-    object.encodeObjectMap("paths", paths);
-    object.encodeObject("components", components);
-    object.encodeObjects("security", security);
-    object.encodeObjects("tags", tags);
+    object.encode('openapi', version);
+    object.encodeObject('info', info);
+    object.encodeObjects('servers', servers);
+    object.encodeObjectMap('paths', paths);
+    object.encodeObject('components', components);
+    object.encodeObjects('security', security);
+    object.encodeObjects('tags', tags);
   }
 }
