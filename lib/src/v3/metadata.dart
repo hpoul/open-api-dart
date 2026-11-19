@@ -1,5 +1,6 @@
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
+import 'package:open_api_forked/src/v3/external_docs.dart';
 
 /// The object provides metadata about the API.
 ///
@@ -184,12 +185,19 @@ final class APITag extends APIObject {
   /// CommonMark syntax MAY be used for rich text representation.
   String? description;
 
+  /// Additional external documentation.
+  APIExternalDocumentation? externalDocs;
+
   @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
     name = object.decode('name');
     description = object.decode('description');
+    externalDocs = object.decodeObject(
+      'externalDocs',
+      () => APIExternalDocumentation.empty(),
+    );
   }
 
   @override
@@ -201,5 +209,6 @@ final class APITag extends APIObject {
     }
     object.encode('name', name);
     object.encode('description', description);
+    object.encodeObject('externalDocs', externalDocs);
   }
 }

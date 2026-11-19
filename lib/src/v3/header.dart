@@ -1,5 +1,6 @@
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
+import 'package:open_api_forked/src/v3/example.dart';
 import 'package:open_api_forked/src/v3/media_type.dart';
 import 'package:open_api_forked/src/v3/schema.dart';
 
@@ -57,9 +58,8 @@ final class APIHeader extends APIObject {
   /// An example of the header's value, kept as decoded.
   Object? example;
 
-  /// Examples of the header's value, kept as decoded (Example Objects are
-  /// not modelled yet).
-  Map<String, dynamic>? examples;
+  /// Examples of the header's value, by name.
+  Map<String, APIExample> examples = {};
 
   /// The schema defining the type of the header.
   APISchemaObject? schema;
@@ -80,7 +80,8 @@ final class APIHeader extends APIObject {
     schema = object.decodeObject('schema', () => APISchemaObject());
     content = object.decodeObjectMap('content', () => APIMediaType()) ?? {};
     example = object.decode<Object?>('example');
-    examples = object.decode<Map<String, dynamic>>('examples');
+    examples =
+        object.decodeObjectMap('examples', () => APIExample.empty()) ?? {};
   }
 
   @override
@@ -95,6 +96,6 @@ final class APIHeader extends APIObject {
     object.encodeObject('schema', schema);
     object.encodeObjectMap('content', content, omitEmpty: true);
     object.encode('example', example);
-    object.encode('examples', examples);
+    object.encodeObjectMap('examples', examples, omitEmpty: true);
   }
 }

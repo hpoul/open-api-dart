@@ -21,8 +21,7 @@
 - **Breaking:** `APIHeader` is its own class instead of an `APIParameter`
   subclass, so it no longer has `name` or `location`. It has the Header
   Object fields: `description`, `isRequired`, `isDeprecated`, `style`,
-  `explode`, `schema`, `content`, and `example`/`examples` kept as decoded
-  data. This fixes
+  `explode`, `schema`, `content`, `example` and `examples`. This fixes
   re-encoding a decoded document with headers, which threw because the
   header had no `name`/`in`.
 - **Breaking:** `APIServerDescription.url` is a `String` instead of a `Uri`.
@@ -118,6 +117,46 @@
   `APISchemaObject($ref: #/components/schemas/Pet)`, instead of
   `Instance of '...'`. Some types print only `TypeName()`; nesting is cut
   off after a few levels, so cycles built in code don't overflow.
+- The remaining OpenAPI 3.0 objects are modelled, so these fields are no
+  longer dropped when a document is decoded and encoded again:
+  - New `APIExternalDocumentation` as `externalDocs` on `APIDocument`,
+    `APIOperation`, `APITag` and `APISchemaObject`.
+  - New `APIDiscriminator` (`discriminator`), `APIXml` (`xml`) and
+    `example` on `APISchemaObject`.
+  - New `APIExample`: `example`/`examples` on `APIParameter` and
+    `APIMediaType`, and `APIComponents.examples`.
+  - New `APILink`: `APIResponse.links` and `APIComponents.links`.
+  - `APIPath.servers`.
+  - `resolveUri` handles `#/components/examples/...` and
+    `#/components/links/...`.
+  URLs (`externalDocs.url`, `externalValue`, `xml.namespace`) are `Uri`s,
+  like the other URLs except server templates, so they are normalised when
+  encoded again. Explicit `null` values are not encoded.
+- **Breaking:** `APIHeader.examples` is a `Map<String, APIExample>` (empty
+  by default) instead of decoded data.
+- Free-form values are decided by position, not by key name, and kept as
+  plain data: `example`, schema `default` and `enum`, an Example's `value`,
+  a Link's `parameters` and `requestBody`, and `x-` extension values. A
+  `$ref`-shaped map in there is returned as is (it used to be resolved,
+  rejected, or crash with a `TypeError`), and maps in there are
+  `Map<String, dynamic>`. Conversely, a `$ref` under a name such as
+  `default` in `examples`, `properties` or `links` is now checked like any
+  other reference instead of being skipped. An `examples` list (JSON
+  Schema, or converted Swagger 2) is ignored.
+- A `$ref` may still point into free-form data, such as shared definitions
+  under an `x-` key: what a `$ref` (outside free-form data) points into is
+  read as OpenAPI objects, with its own `$ref`s checked and resolved and
+  its examples kept as data. Its siblings stay data, and decoded fields
+  such as `extensions` and `example` are still plain data.
+- `x-` extensions directly in `paths`, operation `responses` and callbacks
+  are ignored instead of being decoded as a path item or response (which
+  failed for anything but an object, and lost its content).
+- `validate()` also reports a missing `externalDocs.url` (in schemas too)
+  or discriminator `propertyName`, `example` together with `examples`, an
+  example with both `value` and `externalValue`, a link without exactly one
+  of `operationRef` and `operationId`, a link `operationId` that no
+  operation has, and path-level servers without `url`. It now walks
+  schemas, but checks only these OpenAPI additions in them.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 

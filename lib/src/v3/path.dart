@@ -2,6 +2,7 @@ import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/operation.dart';
 import 'package:open_api_forked/src/v3/parameter.dart';
+import 'package:open_api_forked/src/v3/server.dart';
 
 /// Describes the operations available on a single path.
 ///
@@ -53,7 +54,9 @@ final class APIPath extends APIObject {
     return parameterNames.every((check) => pathParams.contains(check));
   }
 
-  // todo (joeconwaystk): alternative servers not yet implemented
+  /// Servers for all operations in this path, replacing the document's.
+  /// `null` means not given.
+  List<APIServerDescription>? servers;
 
   @override
   void decode(KeyedArchive object) {
@@ -63,6 +66,10 @@ final class APIPath extends APIObject {
     description = object.decode('description');
     parameters =
         object.decodeObjects('parameters', () => APIParameter.empty()) ?? [];
+    servers = object.decodeObjects(
+      'servers',
+      () => APIServerDescription.empty(),
+    );
 
     final methodNames = [
       'get',
@@ -95,6 +102,7 @@ final class APIPath extends APIObject {
     object.encode('summary', summary);
     object.encode('description', description);
     object.encodeObjects('parameters', parameters, omitEmpty: true);
+    object.encodeObjects('servers', servers);
 
     operations.forEach((opName, op) {
       object.encodeObject(opName.toLowerCase(), op);

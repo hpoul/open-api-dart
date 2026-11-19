@@ -3,6 +3,7 @@
 
 import 'dart:collection';
 
+import 'package:open_api_forked/src/codec/free_form.dart';
 import 'package:open_api_forked/src/codec/list_archive.dart';
 import 'package:open_api_forked/src/codec/resolver.dart';
 import 'package:open_api_forked/src/exception.dart';
@@ -155,6 +156,8 @@ final class KeyedArchive extends Object
         out[key] = val.toPrimitive();
       } else if (val is ListArchive) {
         out[key] = val.toPrimitive();
+      } else if (val is FreeForm) {
+        out[key] = FreeForm.plain(val.value, pointerTo(key));
       } else {
         out[key] = val;
       }
@@ -163,11 +166,17 @@ final class KeyedArchive extends Object
   }
 
   dynamic _getValue(String? key) {
-    if (_map.containsKey(key)) {
-      return _map[key];
-    }
+    final value = rawValue(key);
+    return value is FreeForm ? value.value : value;
+  }
 
-    return _objectReference?._getValue(key);
+  /// The value for [key] as stored, with free-form data still wrapped in a
+  /// [FreeForm]. Falls back to the referenced object like [decode].
+  Object? rawValue(String? key) {
+    if (_map.containsKey(key)) {
+      return _map[key] as Object?;
+    }
+    return _objectReference?.rawValue(key);
   }
 
   void _recode() {
@@ -222,8 +231,10 @@ final class KeyedArchive extends Object
   /// encoding [object] can emit them again. Called by [APIObject.decode].
   void rememberEmptyKeys(APIObject object) {
     final keys = {
-      for (final MapEntry(:key, :value) in _map.entries)
-        if ((value is Map && value.isEmpty) || (value is List && value.isEmpty))
+      for (final MapEntry(:key, value: raw) in _map.entries)
+        if (raw is FreeForm ? raw.value : raw case final value
+            when (value is Map && value.isEmpty) ||
+                (value is List && value.isEmpty))
           key,
     };
     _emptyKeysOnDecode[object] = keys.isEmpty ? null : keys;
@@ -270,7 +281,13 @@ final class KeyedArchive extends Object
   /// pairs will be searched first. If [key] is not found, the referenced object's key-values pairs are searched.
   /// If no match is found, null is returned.
   T? decode<T>(String? key) {
-    final v = _getValue(key);
+    final v = switch (_getValue(key)) {
+      // Data that a `$ref` points into was read as objects; hand it out
+      // as plain data all the same.
+      final KeyedArchive archive => archive.toPrimitive(),
+      final ListArchive list => list.toPrimitive(),
+      final Object? value => value,
+    };
     if (v == null) {
       return null;
     }
@@ -292,7 +309,7 @@ final class KeyedArchive extends Object
     if (v is! T) {
       throw _typeMismatch(key, v, _describeType<T>());
     }
-    return v;
+    return v as T;
   }
 
   /// Describes [T] for error messages, e.g. `an integer` for [int].
@@ -412,6 +429,11 @@ final class KeyedArchive extends Object
     String? key,
     T Function() inflate,
   ) {
+    if (rawValue(key) is FreeForm) {
+      // Data where a map of objects was expected, such as a JSON Schema
+      // `examples` list: ignored.
+      return null;
+    }
     final v = _getValue(key);
     if (v == null) {
       return null;
@@ -421,16 +443,24 @@ final class KeyedArchive extends Object
       throw _typeMismatch(key, v, 'an object');
     }
 
-    return {
-      for (final MapEntry(key: k, value: e) in v.entries)
-        k: e is KeyedArchive
-            ? _decodedObject(e, inflate)!
-            : throw OpenApiFormatException(
-                'Expected an object, found ${_describe(e)}.',
-                pointer: appendPointer(pointerTo(key), k),
-                source: e,
-              ),
-    };
+    final result = <String, T>{};
+    for (final k in v.keys) {
+      final e = v.rawValue(k);
+      if (e is FreeForm) {
+        // An extension in a map of objects (`paths`, `responses`, a
+        // callback): not one of the objects.
+        continue;
+      }
+      if (e is! KeyedArchive) {
+        throw OpenApiFormatException(
+          'Expected an object, found ${_describe(e)}.',
+          pointer: appendPointer(pointerTo(key), k),
+          source: e,
+        );
+      }
+      result[k] = _decodedObject(e, inflate)!;
+    }
+    return result;
   }
 
   /* encode */

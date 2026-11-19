@@ -1,6 +1,7 @@
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/document.dart';
+import 'package:open_api_forked/src/v3/example.dart';
 import 'package:open_api_forked/src/v3/media_type.dart';
 import 'package:open_api_forked/src/v3/schema.dart';
 
@@ -239,8 +240,12 @@ final class APIParameter extends APIObject {
   /// The key is the media type and the value describes it. The map MUST only contain one entry.
   Map<String, APIMediaType> content = {};
 
-  // Currently missing:
-  // example, examples
+  /// An example of the value, kept as decoded. Mutually exclusive with
+  /// [examples].
+  Object? example;
+
+  /// Examples of the value, by name. Mutually exclusive with [example].
+  Map<String, APIExample> examples = {};
 
   @override
   void decode(KeyedArchive object) {
@@ -259,6 +264,9 @@ final class APIParameter extends APIObject {
     explode = object.decode('explode');
     allowReserved = object.decode('allowReserved');
     content = object.decodeObjectMap('content', () => APIMediaType()) ?? {};
+    example = object.decode<Object?>('example');
+    examples =
+        object.decodeObjectMap('examples', () => APIExample.empty()) ?? {};
   }
 
   @override
@@ -292,5 +300,7 @@ final class APIParameter extends APIObject {
     object.encode('explode', explode);
     object.encode('allowReserved', allowReserved);
     object.encodeObjectMap('content', content, omitEmpty: true);
+    object.encode('example', example);
+    object.encodeObjectMap('examples', examples, omitEmpty: true);
   }
 }
