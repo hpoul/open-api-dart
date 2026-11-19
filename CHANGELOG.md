@@ -24,6 +24,10 @@
   data. This fixes
   re-encoding a decoded document with headers, which threw because the
   header had no `name`/`in`.
+- **Breaking:** `APIServerDescription.url` is a `String` instead of a `Uri`.
+  It is a template (`{scheme}://{host}/v1`) and parsing it as a `Uri`
+  mangled it. New `APIServerDescription.resolve()` substitutes the variables
+  (given values, then defaults) and returns a `Uri`.
 
 ## 3.0.1
 
