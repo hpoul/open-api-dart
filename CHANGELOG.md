@@ -71,6 +71,15 @@
   `APIDocument.fromMap` should catch `FormatException` or
   `OpenApiFormatException` instead. Errors when encoding an invalid model
   built in code are still `ArgumentError`s.
+- New `APIDocument.validate()` returns an `OpenApiFormatException` (with a
+  JSON pointer) for each missing REQUIRED field and similar problem: `info`,
+  `title`/`version`, parameter `name`/`in`, response `description`,
+  operations without responses, request bodies without content, security
+  scheme fields by type, OAuth2 flow URLs, server `url` and variable
+  `default`, tag and license `name`, invalid component names, and security
+  requirements naming no declared scheme. Decoding stays lenient, so the
+  REQUIRED fields stay nullable; a document without `info` now decodes
+  (with `info == null`) instead of crashing.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 
