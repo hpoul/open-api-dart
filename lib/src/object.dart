@@ -21,6 +21,7 @@ abstract base class APIObject {
   @mustCallSuper
   void decode(KeyedArchive object) {
     referenceURI = object.referenceURI;
+    object.rememberEmptyKeys(this);
 
     final extensionKeys = object.keys.where((k) => k.startsWith('x-'));
     for (final key in extensionKeys) {

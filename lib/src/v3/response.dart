@@ -7,14 +7,19 @@ import 'package:open_api_forked/src/v3/schema.dart';
 /// Describes a single response from an API Operation, including design-time, static links to operations based on the response.
 final class APIResponse extends APIObject {
   APIResponse.empty();
-  APIResponse(this.description, {this.content, this.headers});
+  APIResponse(
+    this.description, {
+    Map<String, APIMediaType>? content,
+    Map<String, APIHeader>? headers,
+  }) : content = content ?? {},
+       headers = headers ?? {};
   APIResponse.schema(
     this.description,
     APISchemaObject schema, {
     Iterable<String> contentTypes = const ['application/json'],
-    this.headers,
-  }) {
-    content = contentTypes.fold<Map<String, APIMediaType?>>({}, (prev, elem) {
+    Map<String, APIHeader>? headers,
+  }) : headers = headers ?? {} {
+    content = contentTypes.fold<Map<String, APIMediaType>>({}, (prev, elem) {
       prev[elem] = APIMediaType(schema: schema);
       return prev;
     });
@@ -28,22 +33,21 @@ final class APIResponse extends APIObject {
   /// Maps a header name to its definition.
   ///
   /// RFC7230 states header names are case insensitive. If a response header is defined with the name "Content-Type", it SHALL be ignored.
-  Map<String, APIHeader?>? headers;
+  Map<String, APIHeader> headers = {};
 
   /// A map containing descriptions of potential response payloads.
   ///
   /// The key is a media type or media type range and the value describes it. For responses that match multiple keys, only the most specific key is applicable. e.g. text/plain overrides text/*
-  Map<String, APIMediaType?>? content;
+  Map<String, APIMediaType> content = {};
 
   // Currently missing:
   // links
 
   /// Adds a [header] to [headers] for [name].
   ///
-  /// If [headers] is null, it is created. If the key does not exist in [headers], [header] is added for the key.
+  /// If the key does not exist in [headers], [header] is added for the key.
   /// If the key exists, [header] is not added. (To replace a header, access [headers] directly.)
-  void addHeader(String name, APIHeader? header) {
-    final headers = this.headers ??= {};
+  void addHeader(String name, APIHeader header) {
     if (!headers.containsKey(name)) {
       headers[name] = header;
     }
@@ -53,11 +57,9 @@ final class APIResponse extends APIObject {
   ///
   /// [contentType] must take the form 'primaryType/subType', e.g. 'application/json'. Do not include charsets.
   ///
-  /// If [content] is null, it is created. If [contentType] does not exist in [content], [bodyObject] is added for [contentType].
+  /// If [contentType] does not exist in [content], [bodyObject] is added for [contentType].
   /// If [contentType] exists, the [bodyObject] is added the list of possible schemas that were previously added.
   void addContent(String contentType, APISchemaObject? bodyObject) {
-    final content = this.content ??= {};
-
     final key = contentType;
     final existingContent = content[key];
     if (existingContent == null) {
@@ -65,13 +67,16 @@ final class APIResponse extends APIObject {
       return;
     }
 
+    if (bodyObject == null) {
+      return;
+    }
     final schema = existingContent.schema;
-    final oneOf = schema?.oneOf;
-    if (oneOf != null) {
-      oneOf.add(bodyObject);
+    if (schema == null) {
+      existingContent.schema = bodyObject;
+    } else if (schema.oneOf.isNotEmpty) {
+      schema.oneOf.add(bodyObject);
     } else {
-      final container = APISchemaObject()..oneOf = [schema, bodyObject];
-      existingContent.schema = container;
+      existingContent.schema = APISchemaObject()..oneOf = [schema, bodyObject];
     }
   }
 
@@ -80,8 +85,8 @@ final class APIResponse extends APIObject {
     super.decode(object);
 
     description = object.decode('description');
-    content = object.decodeObjectMap('content', () => APIMediaType());
-    headers = object.decodeObjectMap('headers', () => APIHeader());
+    content = object.decodeObjectMap('content', () => APIMediaType()) ?? {};
+    headers = object.decodeObjectMap('headers', () => APIHeader()) ?? {};
   }
 
   @override
@@ -95,7 +100,7 @@ final class APIResponse extends APIObject {
     }
 
     object.encode('description', description);
-    object.encodeObjectMap('headers', headers);
-    object.encodeObjectMap('content', content);
+    object.encodeObjectMap('headers', headers, omitEmpty: true);
+    object.encodeObjectMap('content', content, omitEmpty: true);
   }
 }

@@ -7,6 +7,11 @@ import 'package:open_api_forked/src/codec/list_archive.dart';
 import 'package:open_api_forked/src/codec/resolver.dart';
 import 'package:open_api_forked/src/object.dart';
 
+/// For each decoded object, the keys whose value in the input was an empty
+/// map or list. Used to emit `{}`/`[]` again for those keys only, so that an
+/// absent collection stays absent and an empty one stays empty.
+final Expando<Set<String>> _emptyKeysOnDecode = Expando('emptyKeysOnDecode');
+
 /// A container for a dynamic data object that can be decoded into [APIObject] objects.
 ///
 /// A [KeyedArchive] is a [Map], but it provides additional behavior for decoding [APIObject] objects
@@ -60,7 +65,7 @@ final class KeyedArchive extends Object
     APIObject root, {
     bool allowReferences = false,
   }) {
-    final archive = KeyedArchive({});
+    final archive = KeyedArchive({}).._source = root;
     root.encode(archive);
     if (allowReferences) {
       archive.resolveOrThrow(ReferenceResolver(archive));
@@ -94,6 +99,9 @@ final class KeyedArchive extends Object
 
   late Map<String, dynamic> _map;
   APIObject? _inflated;
+
+  /// The object being encoded into this archive, if any.
+  APIObject? _source;
   KeyedArchive? _objectReference;
 
   @override
@@ -179,6 +187,32 @@ final class KeyedArchive extends Object
 
   /* decode */
 
+  /// Remembers which keys of this archive hold an empty map or list, so that
+  /// encoding [object] can emit them again. Called by [APIObject.decode].
+  void rememberEmptyKeys(APIObject object) {
+    final keys = {
+      for (final MapEntry(:key, :value) in _map.entries)
+        if ((value is Map && value.isEmpty) || (value is List && value.isEmpty))
+          key,
+    };
+    if (keys.isNotEmpty) {
+      _emptyKeysOnDecode[object] = keys;
+    }
+  }
+
+  /// Whether an empty collection for [key] must be omitted when encoding:
+  /// true unless the decoded input had an empty collection for [key].
+  bool _omitEmpty(String key, Object value) {
+    final isEmpty =
+        (value is Map && value.isEmpty) || (value is Iterable && value.isEmpty);
+    if (!isEmpty) {
+      return false;
+    }
+    final source = _source;
+    return source == null ||
+        !(_emptyKeysOnDecode[source]?.contains(key) ?? false);
+  }
+
   T? _decodedObject<T extends APIObject>(
     KeyedArchive? raw,
     T Function() inflate,
@@ -259,7 +293,7 @@ final class KeyedArchive extends Object
   /// must be a [ListArchive] (a [List] of [Map]). For each element of the archived list,
   /// [inflate] is invoked and each object in the archived list is decoded into
   /// the instance of [T].
-  List<T?>? decodeObjects<T extends APIObject>(
+  List<T>? decodeObjects<T extends APIObject>(
     String key,
     T Function() inflate,
   ) {
@@ -273,7 +307,13 @@ final class KeyedArchive extends Object
       );
     }
 
-    return val.map((v) => _decodedObject(v as KeyedArchive?, inflate)).toList();
+    return [
+      for (final (i, v) in val.indexed)
+        _decodedObject(v as KeyedArchive?, inflate) ??
+            (throw ArgumentError(
+              "Cannot decode key '$key': element $i is null.",
+            )),
+    ];
   }
 
   /// Returns a map of [T]s associated with [key].
@@ -282,7 +322,7 @@ final class KeyedArchive extends Object
   /// must be a [KeyedArchive] (a [Map]), where each value is a [T].
   /// For each key-value pair of the archived map, [inflate] is invoked and
   /// each value is decoded into the instance of [T].
-  Map<String, T?>? decodeObjectMap<T extends APIObject>(
+  Map<String, T>? decodeObjectMap<T extends APIObject>(
     String? key,
     T Function() inflate,
   ) {
@@ -298,7 +338,12 @@ final class KeyedArchive extends Object
     }
 
     return {
-      for (var k in v.keys) k: _decodedObject(v[k] as KeyedArchive?, inflate),
+      for (final k in v.keys)
+        k:
+            _decodedObject(v[k] as KeyedArchive?, inflate) ??
+            (throw ArgumentError(
+              "Cannot decode key '$key': value of '$k' is null.",
+            )),
     };
   }
 
@@ -316,6 +361,7 @@ final class KeyedArchive extends Object
     // reference between this object and another.
     final json = KeyedArchive._empty()
       .._map = {}
+      .._source = object
       ..referenceURI = object.referenceURI;
     final referenceURI = json.referenceURI;
     if (referenceURI != null) {
@@ -332,9 +378,10 @@ final class KeyedArchive extends Object
   /// If [value] is a [Uri], it is first encoded to a string.
   ///
   /// If [value] is null, no value is encoded and the [key] will not be present
-  /// in the resulting archive.
-  void encode(String key, dynamic value) {
-    if (value == null) {
+  /// in the resulting archive. If [omitEmpty] is true, an empty map or list
+  /// is only encoded if the decoded input had one for [key].
+  void encode(String key, dynamic value, {bool omitEmpty = false}) {
+    if (value == null || (omitEmpty && _omitEmpty(key, value as Object))) {
       return;
     }
 
@@ -363,8 +410,15 @@ final class KeyedArchive extends Object
   ///
   /// This invokes [APIObject.encode] on each object in [value] and adds the list of objects
   /// to this archive for the key [key].
-  void encodeObjects(String key, List<APIObject?>? value) {
-    if (value == null) {
+  ///
+  /// If [omitEmpty] is true, an empty list is only encoded if the decoded
+  /// input had one for [key].
+  void encodeObjects(
+    String key,
+    List<APIObject?>? value, {
+    bool omitEmpty = false,
+  }) {
+    if (value == null || (omitEmpty && _omitEmpty(key, value))) {
       return;
     }
 
@@ -375,11 +429,15 @@ final class KeyedArchive extends Object
   ///
   /// This invokes [APIObject.encode] on each value in [value] and adds the map of objects
   /// to this archive for the key [key].
+  ///
+  /// If [omitEmpty] is true, an empty map is only encoded if the decoded
+  /// input had one for [key].
   void encodeObjectMap<T extends APIObject>(
     String key,
-    Map<String, T?>? value,
-  ) {
-    if (value == null) {
+    Map<String, T?>? value, {
+    bool omitEmpty = false,
+  }) {
+    if (value == null || (omitEmpty && _omitEmpty(key, value))) {
       return;
     }
 

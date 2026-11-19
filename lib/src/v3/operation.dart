@@ -15,23 +15,26 @@ final class APIOperation extends APIObject {
 
   APIOperation(
     this.id,
-    this.responses, {
-    this.tags,
+    Map<String, APIResponse>? responses, {
+    List<String>? tags,
     this.summary,
     this.description,
-    this.parameters,
+    List<APIParameter>? parameters,
     this.security,
     this.requestBody,
-    this.callbacks,
+    Map<String, APICallback>? callbacks,
     bool? deprecated,
-  }) {
+  }) : responses = responses ?? {},
+       tags = tags ?? [],
+       parameters = parameters ?? [],
+       callbacks = callbacks ?? {} {
     isDeprecated = deprecated;
   }
 
   /// A list of tags for API documentation control.
   ///
   /// Tags can be used for logical grouping of operations by resources or any other qualifier.
-  List<String>? tags;
+  List<String> tags = [];
 
   /// A short summary of what the operation does.
   String? summary;
@@ -49,12 +52,12 @@ final class APIOperation extends APIObject {
   /// A list of parameters that are applicable for this operation.
   ///
   /// If a parameter is already defined at the Path Item, the definition will override it but can never remove it. The list MUST NOT include duplicated parameters. A unique parameter is defined by a combination of a name and location. The list can use the Reference Object to link to parameters that are defined at the OpenAPI Object's components/parameters.
-  List<APIParameter?>? parameters;
+  List<APIParameter> parameters = [];
 
   /// A declaration of which security mechanisms can be used for this operation.
   ///
   /// The list of values includes alternative security requirement objects that can be used. Only one of the security requirement objects need to be satisfied to authorize a request. This definition overrides any declared top-level security. To remove a top-level security declaration, an empty array can be used.
-  List<APISecurityRequirement?>? security;
+  List<APISecurityRequirement>? security;
 
   /// The request body applicable for this operation.
   ///
@@ -64,17 +67,17 @@ final class APIOperation extends APIObject {
   /// The list of possible responses as they are returned from executing this operation.
   ///
   /// REQUIRED.
-  Map<String, APIResponse?>? responses;
+  Map<String, APIResponse> responses = {};
 
   /// A map of possible out-of band callbacks related to the parent operation.
   ///
   /// The key is a unique identifier for the [APICallback]. Each value in the map is a [APICallback] that describes a request that may be initiated by the API provider and the expected responses. The key value used to identify the callback object is an expression, evaluated at runtime, that identifies a URL to use for the callback operation.
-  Map<String, APICallback?>? callbacks;
+  Map<String, APICallback> callbacks = {};
 
   /// An alternative server array to service this operation.
   ///
   /// If an alternative server object is specified at the [APIPath] or [APIDocument] level, it will be overridden by this value.
-  List<APIServerDescription?>? servers;
+  List<APIServerDescription>? servers;
 
   /// Declares this operation to be deprecated.
   ///
@@ -83,14 +86,11 @@ final class APIOperation extends APIObject {
 
   /// Returns the parameter named [name] or null if it doesn't exist.
   APIParameter? parameterNamed(String name) =>
-      parameters?.firstWhere((p) => p?.name == name, orElse: () => null);
+      parameters.where((p) => p.name == name).firstOrNull;
 
   /// Adds [parameter] to [parameters].
-  ///
-  /// If [parameters] is null, invoking this method will set it to a list containing [parameter].
-  /// Otherwise, [parameter] is added to [parameters].
   void addParameter(APIParameter parameter) {
-    (parameters ??= []).add(parameter);
+    parameters.add(parameter);
   }
 
   /// Adds [requirement] to [security].
@@ -109,8 +109,6 @@ final class APIOperation extends APIObject {
   /// and headers are added to the list of possible content and headers for the existing response. Descriptions
   /// of each response are joined together. All headers are marked as optional..
   void addResponse(int statusCode, APIResponse response) {
-    final responses = this.responses ??= {};
-
     final key = '$statusCode';
 
     final existingResponse = responses[key];
@@ -121,11 +119,11 @@ final class APIOperation extends APIObject {
 
     existingResponse.description =
         "${existingResponse.description ?? ""}\n${response.description}";
-    response.headers?.forEach((name, header) {
+    response.headers.forEach((name, header) {
       existingResponse.addHeader(name, header);
     });
-    response.content?.forEach((contentType, mediaType) {
-      existingResponse.addContent(contentType, mediaType?.schema);
+    response.content.forEach((contentType, mediaType) {
+      existingResponse.addContent(contentType, mediaType.schema);
     });
   }
 
@@ -133,17 +131,19 @@ final class APIOperation extends APIObject {
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    tags = object.decodeList<String>('tags');
+    tags = object.decodeList<String>('tags') ?? [];
     summary = object.decode('summary');
     description = object.decode('description');
     id = object.decode('operationId');
-    parameters = object.decodeObjects('parameters', () => APIParameter.empty());
+    parameters =
+        object.decodeObjects('parameters', () => APIParameter.empty()) ?? [];
     requestBody = object.decodeObject(
       'requestBody',
       () => APIRequestBody.empty(),
     );
-    responses = object.decodeObjectMap('responses', () => APIResponse.empty());
-    callbacks = object.decodeObjectMap('callbacks', () => APICallback());
+    responses =
+        object.decodeObjectMap('responses', () => APIResponse.empty()) ?? {};
+    callbacks = object.decodeObjectMap('callbacks', () => APICallback()) ?? {};
     isDeprecated = object.decode('deprecated');
     security = object.decodeObjects(
       'security',
@@ -159,20 +159,14 @@ final class APIOperation extends APIObject {
   void encode(KeyedArchive object) {
     super.encode(object);
 
-    if (responses == null) {
-      throw ArgumentError(
-        "Invalid specification. APIOperation must have non-null values for: 'responses'.",
-      );
-    }
-
-    object.encode('tags', tags);
+    object.encode('tags', tags, omitEmpty: true);
     object.encode('summary', summary);
     object.encode('description', description);
     object.encode('operationId', id);
-    object.encodeObjects('parameters', parameters);
+    object.encodeObjects('parameters', parameters, omitEmpty: true);
     object.encodeObject('requestBody', requestBody);
-    object.encodeObjectMap('responses', responses);
-    object.encodeObjectMap('callbacks', callbacks);
+    object.encodeObjectMap('responses', responses, omitEmpty: true);
+    object.encodeObjectMap('callbacks', callbacks, omitEmpty: true);
     object.encode('deprecated', isDeprecated);
     object.encodeObjects('security', security);
     object.encodeObjects('servers', servers);

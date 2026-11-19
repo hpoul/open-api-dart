@@ -191,7 +191,7 @@ final class APISchemaObject extends APIObject {
   ///
   /// An object instance is valid against this keyword if its property set
   /// contains all elements in this keyword's array value.
-  List<String>? required;
+  List<String> required = [];
 
   /// The value of this keyword MUST be an array.  This array SHOULD have
   /// at least one element.  Elements in the array SHOULD be unique.
@@ -205,13 +205,13 @@ final class APISchemaObject extends APIObject {
   /* Modified JSON Schema for OpenAPI */
 
   APIType? type;
-  List<APISchemaObject?>? allOf;
-  List<APISchemaObject?>? anyOf;
-  List<APISchemaObject?>? oneOf;
+  List<APISchemaObject> allOf = [];
+  List<APISchemaObject> anyOf = [];
+  List<APISchemaObject> oneOf = [];
   APISchemaObject? not;
 
   APISchemaObject? items;
-  Map<String, APISchemaObject?>? properties;
+  Map<String, APISchemaObject> properties = {};
   APISchemaObject? additionalPropertySchema;
   APISchemaAdditionalPropertyPolicy? additionalPropertyPolicy;
 
@@ -269,18 +269,19 @@ final class APISchemaObject extends APIObject {
     enumerated = object.decode('enum');
     minProperties = object.decode('minProperties');
     maxProperties = object.decode('maxProperties');
-    required = object.decodeList<String>('required');
+    required = object.decodeList<String>('required') ?? [];
 
     //
 
     type = APIType.fromJson(object.decode('type'));
-    allOf = object.decodeObjects('allOf', () => APISchemaObject());
-    anyOf = object.decodeObjects('anyOf', () => APISchemaObject());
-    oneOf = object.decodeObjects('oneOf', () => APISchemaObject());
+    allOf = object.decodeObjects('allOf', () => APISchemaObject()) ?? [];
+    anyOf = object.decodeObjects('anyOf', () => APISchemaObject()) ?? [];
+    oneOf = object.decodeObjects('oneOf', () => APISchemaObject()) ?? [];
     not = object.decodeObject('not', () => APISchemaObject());
 
     items = object.decodeObject('items', () => APISchemaObject());
-    properties = object.decodeObjectMap('properties', () => APISchemaObject());
+    properties =
+        object.decodeObjectMap('properties', () => APISchemaObject()) ?? {};
 
     final addlProps = object['additionalProperties'];
     if (addlProps is bool) {
@@ -328,14 +329,14 @@ final class APISchemaObject extends APIObject {
     object.encode('enum', enumerated);
     object.encode('minProperties', minProperties);
     object.encode('maxProperties', maxProperties);
-    object.encode('required', required);
+    object.encode('required', required, omitEmpty: true);
 
     //
 
     object.encode('type', type?.jsonValue);
-    object.encodeObjects('allOf', allOf);
-    object.encodeObjects('anyOf', anyOf);
-    object.encodeObjects('oneOf', oneOf);
+    object.encodeObjects('allOf', allOf, omitEmpty: true);
+    object.encodeObjects('anyOf', anyOf, omitEmpty: true);
+    object.encodeObjects('oneOf', oneOf, omitEmpty: true);
     object.encodeObject('not', not);
 
     object.encodeObject('items', items);
@@ -350,7 +351,7 @@ final class APISchemaObject extends APIObject {
         object.encodeObject('additionalProperties', additionalPropertySchema);
       }
     }
-    object.encodeObjectMap('properties', properties);
+    object.encodeObjectMap('properties', properties, omitEmpty: true);
 
     object.encode('description', description);
     object.encode('format', format);

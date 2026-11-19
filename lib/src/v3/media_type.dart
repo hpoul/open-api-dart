@@ -5,7 +5,8 @@ import 'package:open_api_forked/src/v3/schema.dart';
 
 /// Each [APIMediaType] provides schema and examples for the media type identified by its key.
 final class APIMediaType extends APIObject {
-  APIMediaType({this.schema, this.encoding});
+  APIMediaType({this.schema, Map<String, APIEncoding>? encoding})
+    : encoding = encoding ?? {};
   APIMediaType.empty();
 
   /// The schema defining the type used for the request body.
@@ -14,14 +15,14 @@ final class APIMediaType extends APIObject {
   /// A map between a property name and its encoding information.
   ///
   /// The key, being the property name, MUST exist in the schema as a property. The encoding object SHALL only apply to requestBody objects when the media type is multipart or application/x-www-form-urlencoded.
-  Map<String, APIEncoding?>? encoding;
+  Map<String, APIEncoding> encoding = {};
 
   @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
     schema = object.decodeObject('schema', () => APISchemaObject());
-    encoding = object.decodeObjectMap('encoding', () => APIEncoding());
+    encoding = object.decodeObjectMap('encoding', () => APIEncoding()) ?? {};
   }
 
   @override
@@ -29,6 +30,6 @@ final class APIMediaType extends APIObject {
     super.encode(object);
 
     object.encodeObject('schema', schema);
-    object.encodeObjectMap('encoding', encoding);
+    object.encodeObjectMap('encoding', encoding, omitEmpty: true);
   }
 }

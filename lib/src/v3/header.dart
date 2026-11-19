@@ -11,12 +11,13 @@ final class APIHeader extends APIObject {
   APIHeader({
     this.description,
     this.schema,
-    this.content,
+    Map<String, APIMediaType>? content,
     this.style,
     this.explode,
     bool? isRequired,
     bool? isDeprecated,
-  }) : _required = isRequired,
+  }) : content = content ?? {},
+       _required = isRequired,
        _deprecated = isDeprecated;
 
   APIHeader.empty();
@@ -56,7 +57,7 @@ final class APIHeader extends APIObject {
 
   /// A map with a single media type describing the header, as an
   /// alternative to [schema].
-  Map<String, APIMediaType?>? content;
+  Map<String, APIMediaType> content = {};
 
   @override
   void decode(KeyedArchive object) {
@@ -68,7 +69,7 @@ final class APIHeader extends APIObject {
     style = object.decode('style');
     explode = object.decode('explode');
     schema = object.decodeObject('schema', () => APISchemaObject());
-    content = object.decodeObjectMap('content', () => APIMediaType());
+    content = object.decodeObjectMap('content', () => APIMediaType()) ?? {};
     example = object.decode<Object?>('example');
     examples = object.decode<Map<String, dynamic>>('examples');
   }
@@ -83,7 +84,7 @@ final class APIHeader extends APIObject {
     object.encode('style', style);
     object.encode('explode', explode);
     object.encodeObject('schema', schema);
-    object.encodeObjectMap('content', content);
+    object.encodeObjectMap('content', content, omitEmpty: true);
     object.encode('example', example);
     object.encode('examples', examples);
   }

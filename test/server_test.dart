@@ -9,7 +9,7 @@ void main() {
         'info': {'title': 'x', 'version': '1'},
         'paths': <String, dynamic>{},
         'servers': [server],
-      }).servers!.single!;
+      }).servers!.single;
 
   test('server url templates are kept verbatim', () {
     final server = decode({

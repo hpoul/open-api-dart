@@ -4,7 +4,11 @@ import 'package:open_api_forked/src/object.dart';
 /// An object representing a Server.
 final class APIServerDescription extends APIObject {
   APIServerDescription.empty();
-  APIServerDescription(this.url, {this.description, this.variables});
+  APIServerDescription(
+    this.url, {
+    this.description,
+    Map<String, APIServerVariable>? variables,
+  }) : variables = variables ?? {};
 
   /// A URL to the target host.
   ///
@@ -31,7 +35,7 @@ final class APIServerDescription extends APIObject {
     }
     final resolved = template.replaceAllMapped(RegExp(r'\{([^{}]+)\}'), (m) {
       final name = m[1]!;
-      final value = values[name] ?? variables?[name]?.defaultValue;
+      final value = values[name] ?? variables[name]?.defaultValue;
       if (value == null) {
         throw ArgumentError(
           "No value for server variable '$name' in '$template'.",
@@ -50,7 +54,7 @@ final class APIServerDescription extends APIObject {
   /// A map between a variable name and its value.
   ///
   /// The value is used for substitution in the server's URL template.
-  Map<String, APIServerVariable?>? variables;
+  Map<String, APIServerVariable> variables = {};
 
   @override
   void decode(KeyedArchive object) {
@@ -58,10 +62,9 @@ final class APIServerDescription extends APIObject {
 
     url = object.decode('url');
     description = object.decode('description');
-    variables = object.decodeObjectMap(
-      'variables',
-      () => APIServerVariable.empty(),
-    );
+    variables =
+        object.decodeObjectMap('variables', () => APIServerVariable.empty()) ??
+        {};
   }
 
   @override
@@ -76,7 +79,7 @@ final class APIServerDescription extends APIObject {
 
     object.encode('url', url);
     object.encode('description', description);
-    object.encodeObjectMap('variables', variables);
+    object.encodeObjectMap('variables', variables, omitEmpty: true);
   }
 }
 
@@ -85,12 +88,12 @@ final class APIServerVariable extends APIObject {
   APIServerVariable.empty();
   APIServerVariable(
     this.defaultValue, {
-    this.availableValues,
+    List<String>? availableValues,
     this.description,
-  });
+  }) : availableValues = availableValues ?? [];
 
   /// An enumeration of string values to be used if the substitution options are from a limited set.
-  List<String>? availableValues;
+  List<String> availableValues = [];
 
   /// The default value to use for substitution, and to send, if an alternate value is not supplied.
   ///
@@ -106,8 +109,7 @@ final class APIServerVariable extends APIObject {
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    final enumValues = object.decode<List<Object?>>('enum');
-    availableValues = enumValues == null ? null : List<String>.from(enumValues);
+    availableValues = object.decodeList<String>('enum') ?? [];
     defaultValue = object.decode('default');
     description = object.decode('description');
   }
@@ -122,7 +124,7 @@ final class APIServerVariable extends APIObject {
       );
     }
 
-    object.encode('enum', availableValues);
+    object.encode('enum', availableValues, omitEmpty: true);
     object.encode('default', defaultValue);
     object.encode('description', description);
   }

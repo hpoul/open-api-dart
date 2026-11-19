@@ -41,6 +41,21 @@
   is an `abstract base class`: it can no longer be implemented, and a
   subclass must be `base`, `final` or `sealed`. The deprecated `*Codec`
   classes are `abstract final`.
+- **Breaking:** collections are non-null, with non-null elements, and default
+  to empty growable collections: `Map<String, APISchemaObject> schemas = {}`,
+  `List<APIParameter> parameters = []`, `Map<String, APIOperation> operations`,
+  and so on. Constructors still accept `null` for them. Two exceptions stay
+  nullable because absent means something different from empty:
+  `security` (absent inherits, `[]` means no auth) and `servers`. Free-form
+  values (`enum`, `example`, `examples`) are unchanged.
+- Absent and empty collections now round-trip: an empty collection is only
+  encoded if it was present in the decoded input, or was filled in code.
+  This fixes `components` without `schemas` encoding as `schemas: {}`.
+- A `null` value inside a map or list of objects (such as `schemas: {A: null}`)
+  is rejected with an `ArgumentError`.
+- Encoding no longer throws for an empty `paths`, operation `responses`,
+  request body `content` or OAuth2 `flows`; checking required fields moves to
+  validation.
 - Invalid `tags` or `required` lists now throw `TypeError` instead of
   `FailedCast`.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
@@ -48,7 +63,7 @@
 
 ## 3.0.1
 
-- Fix crash decoding `components` without `schemas` (schemas is now an empty map, so it encodes back as `schemas: {}`).
+- Fix crash decoding `components` without `schemas` (schemas is now an empty map, so it encodes back as `schemas: {}` in 3.0.1).
 - Fix decoding and encoding of callbacks (decoding crashed on any callback, encoding threw).
 - Fix crash decoding a server variable without `enum`.
 - Fix crash encoding an `openIdConnect` security scheme.
