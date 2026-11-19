@@ -11,7 +11,10 @@ enum APISecuritySchemeType {
   apiKey('apiKey'),
   http('http'),
   oauth2('oauth2'),
-  openIdConnect('openIdConnect');
+  openIdConnect('openIdConnect'),
+
+  /// Mutual TLS (OpenAPI 3.1).
+  mutualTLS('mutualTLS');
 
   const APISecuritySchemeType(this.jsonValue);
 
@@ -63,6 +66,9 @@ final class APISecurityScheme extends APIObject {
 
   APISecurityScheme.openIdConnect(this.connectURL)
     : type = APISecuritySchemeType.openIdConnect;
+
+  /// A mutual TLS scheme (OpenAPI 3.1).
+  APISecurityScheme.mutualTLS() : type = APISecuritySchemeType.mutualTLS;
 
   @Deprecated('Use APISecurityScheme.openIdConnect.')
   APISecurityScheme.openID(this.connectURL)
@@ -150,6 +156,8 @@ final class APISecurityScheme extends APIObject {
           connectURL = object.decode('openIdConnectUrl');
         }
         break;
+      case APISecuritySchemeType.mutualTLS:
+        break;
       case null:
         // Missing or unknown type: left null, reported by
         // APIDocument.validate().
@@ -209,6 +217,8 @@ final class APISecurityScheme extends APIObject {
           }
           object.encode('openIdConnectUrl', connectURL);
         }
+        break;
+      case APISecuritySchemeType.mutualTLS:
         break;
       default:
         throw ArgumentError(

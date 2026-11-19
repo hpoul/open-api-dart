@@ -82,7 +82,8 @@ final class APIPath extends APIObject {
       'trace',
     ];
     for (var methodName in methodNames) {
-      if (!object.containsKey(methodName)) {
+      // rawValue also looks in the path item a `$ref` points to.
+      if (object.rawValue(methodName) == null) {
         continue;
       }
       final operation = object.decodeObject(

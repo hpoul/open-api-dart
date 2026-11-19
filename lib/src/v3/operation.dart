@@ -76,6 +76,14 @@ final class APIOperation extends APIObject {
   /// REQUIRED.
   Map<String, APIResponse> responses = {};
 
+  /// Whether the operation has `responses`, as it is encoded: a non-empty
+  /// [responses], or any [responses] unless this was decoded from input
+  /// without them. OpenAPI 3.1 operations may leave them out; operations
+  /// built in code always write them, as OpenAPI 3.0 requires.
+  bool get hasResponses => responses.isNotEmpty || !_decodedWithoutResponses;
+
+  bool _decodedWithoutResponses = false;
+
   /// A map of possible out-of band callbacks related to the parent operation.
   ///
   /// The key is a unique identifier for the [APICallback]. Each value in the map is a [APICallback] that describes a request that may be initiated by the API provider and the expected responses. The key value used to identify the callback object is an expression, evaluated at runtime, that identifies a URL to use for the callback operation.
@@ -153,6 +161,7 @@ final class APIOperation extends APIObject {
     );
     responses =
         object.decodeObjectMap('responses', () => APIResponse.empty()) ?? {};
+    _decodedWithoutResponses = object.rawValue('responses') == null;
     callbacks = object.decodeObjectMap('callbacks', () => APICallback()) ?? {};
     isDeprecated = object.decode('deprecated');
     security = object.decodeObjects(
@@ -179,7 +188,9 @@ final class APIOperation extends APIObject {
     object.encode('operationId', id);
     object.encodeObjects('parameters', parameters, omitEmpty: true);
     object.encodeObject('requestBody', requestBody);
-    object.encodeObjectMap('responses', responses);
+    if (hasResponses) {
+      object.encodeObjectMap('responses', responses);
+    }
     object.encodeObjectMap('callbacks', callbacks, omitEmpty: true);
     object.encode('deprecated', isDeprecated);
     object.encodeObjects('security', security);

@@ -22,6 +22,7 @@ final class APIDocument extends APIObject {
     'title': info?.title,
     'version': info?.version,
     'paths': paths.length,
+    'webhooks': webhooks?.length,
   };
 
   /// Creates a specification from decoded JSON or YAML document object.
@@ -202,7 +203,10 @@ final class APIDocument extends APIObject {
   ///
   /// Paths come in map order (document order when decoded); within a path,
   /// methods come in the fixed order get, put, post, delete, options, head,
-  /// patch, trace. `x-` extension keys in [paths] are skipped. This is a
+  /// patch, trace. `x-` extension keys in [paths] are skipped. A path item
+  /// that is a `$ref` yields the operations of its target, so a target
+  /// used by several paths yields the same [APIOperation]s for each (and
+  /// `validate()` reports it). This is a
   /// lazy iterable: each iteration, including `.length`, walks the paths
   /// again.
   ///
@@ -248,8 +252,28 @@ final class APIDocument extends APIObject {
 
   /// The available paths and operations for the API.
   ///
-  /// REQUIRED.
+  /// REQUIRED in OpenAPI 3.0. In 3.1 a document needs at least one of
+  /// [paths], [components] or [webhooks]; an empty map is then not
+  /// written when the document had no `paths`.
   Map<String, APIPath> paths = {};
+
+  /// Incoming requests the API may send to its consumers, keyed by a name
+  /// (OpenAPI 3.1). `null` when the document has no `webhooks`.
+  ///
+  /// The operations are not part of [operations].
+  Map<String, APIPath>? webhooks;
+
+  /// The default `$schema` for the schemas in this document (OpenAPI 3.1).
+  String? jsonSchemaDialect;
+
+  /// Whether the document has `paths`: a non-empty [paths], or `paths`
+  /// in the decoded input. OpenAPI 3.1 documents may leave them out.
+  bool get hasPaths => paths.isNotEmpty || _decodedPaths;
+
+  bool _decodedPaths = false;
+
+  /// Whether [version] is an OpenAPI 3.1 version (`3.1.x`).
+  bool get isOpenApi31 => version?.startsWith('3.1.') ?? false;
 
   /// An element to hold various schemas for the specification.
   APIComponents? components;
@@ -277,11 +301,14 @@ final class APIDocument extends APIObject {
 
     version = object.decode('openapi');
     info = object.decodeObject('info', () => APIInfo.empty());
+    jsonSchemaDialect = object.decode('jsonSchemaDialect');
     servers = object.decodeObjects(
       'servers',
       () => APIServerDescription.empty(),
     );
     paths = object.decodeObjectMap('paths', () => APIPath()) ?? {};
+    _decodedPaths = object.rawValue('paths') != null;
+    webhooks = object.decodeObjectMap('webhooks', () => APIPath());
     components = object.decodeObject('components', () => APIComponents());
     security = object.decodeObjects(
       'security',
@@ -306,8 +333,10 @@ final class APIDocument extends APIObject {
 
     object.encode('openapi', version);
     object.encodeObject('info', info);
+    object.encode('jsonSchemaDialect', jsonSchemaDialect);
     object.encodeObjects('servers', servers);
-    object.encodeObjectMap('paths', paths);
+    object.encodeObjectMap('paths', paths, omitEmpty: isOpenApi31);
+    object.encodeObjectMap('webhooks', webhooks);
     object.encodeObject('components', components);
     object.encodeObjects('security', security);
     object.encodeObjects('tags', tags, omitEmpty: true);
@@ -362,6 +391,7 @@ enum _Node {
     object || link => switch (key) {
       'components' => _Node.components,
       'paths' || 'responses' => _Node.extensibleMap,
+      'webhooks' => _Node.nameMap,
       'links' => _Node.linkMap,
       'callbacks' => _Node.callbackMap,
       _ when APIDocument._stringMapFields.contains(key) => _Node.data,

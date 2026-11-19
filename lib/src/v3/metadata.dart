@@ -29,6 +29,9 @@ final class APIInfo extends APIObject {
   /// REQUIRED.
   String? title;
 
+  /// A short summary of the API (OpenAPI 3.1).
+  String? summary;
+
   /// A short description of the application.
   ///
   /// CommonMark syntax MAY be used for rich text representation.
@@ -55,6 +58,7 @@ final class APIInfo extends APIObject {
     super.decode(object);
 
     title = object.decode('title');
+    summary = object.decode('summary');
     description = object.decode('description');
     final termsOfService = object.decode<String>('termsOfService');
     termsOfServiceURL = termsOfService != null
@@ -76,6 +80,7 @@ final class APIInfo extends APIObject {
     }
 
     object.encode('title', title);
+    object.encode('summary', summary);
     object.encode('description', description);
     object.encode('version', version);
     object.encode('termsOfService', termsOfServiceURL);
@@ -128,7 +133,7 @@ final class APIContact extends APIObject {
 /// License information for the exposed API.
 final class APILicense extends APIObject {
   APILicense.empty();
-  APILicense(this.name, {this.url});
+  APILicense(this.name, {this.url, this.identifier});
 
   @override
   Map<String, Object?> get toStringFields => {'name': name};
@@ -140,14 +145,19 @@ final class APILicense extends APIObject {
 
   /// A URL to the license used for the API.
   ///
-  /// MUST be in the format of a URL.
+  /// MUST be in the format of a URL. Not together with [identifier].
   Uri? url;
+
+  /// An [SPDX](https://spdx.org/licenses/) license expression for the API,
+  /// such as `Apache-2.0` (OpenAPI 3.1). Not together with [url].
+  String? identifier;
 
   @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
     name = object.decode('name');
+    identifier = object.decode('identifier');
     url = object.decode('url');
   }
 
@@ -160,6 +170,7 @@ final class APILicense extends APIObject {
     }
 
     object.encode('name', name);
+    object.encode('identifier', identifier);
     object.encode('url', url);
   }
 }

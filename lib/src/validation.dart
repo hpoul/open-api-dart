@@ -11,6 +11,7 @@ List<OpenApiFormatException> validateDocument(APIDocument document) {
 }
 
 final RegExp _componentKey = RegExp(r'^[a-zA-Z0-9.\-_]+$');
+final RegExp _supportedVersion = RegExp(r'^3\.[01]\.\d+$');
 final RegExp _responseKey = RegExp(r'^(default|[1-5]([0-9]{2}|XX))$');
 final RegExp _templateParameter = RegExp(r'\{([^{}]+)\}');
 const _flowNames = {
@@ -22,6 +23,9 @@ const _flowNames = {
 
 final class _Validator {
   final issues = <OpenApiFormatException>[];
+
+  /// Whether the document is OpenAPI 3.1, where some fields are optional.
+  bool _isOpenApi31 = false;
 
   /// Security schemes declared in components, by name, for checking
   /// requirements. Null if the document has no components.
@@ -62,6 +66,24 @@ final class _Validator {
   void document(APIDocument d) {
     const p = '#';
     _required(p, 'openapi', d.version);
+    _isOpenApi31 = d.isOpenApi31;
+    if (_isOpenApi31 &&
+        !d.hasPaths &&
+        d.components == null &&
+        d.webhooks == null) {
+      _issue(
+        p,
+        'An OpenAPI 3.1 document must have at least one of paths, '
+        'components or webhooks.',
+      );
+    }
+    final version = d.version;
+    if (version != null && !_supportedVersion.hasMatch(version)) {
+      _issue(
+        appendPointer(p, 'openapi'),
+        "OpenAPI version '$version' is not supported; expected 3.0.x or 3.1.x.",
+      );
+    }
     _required(p, 'info', d.info);
     final info = d.info;
     if (info != null) {
@@ -72,6 +94,26 @@ final class _Validator {
     );
     _servers(p, d.servers);
     final paths = appendPointer(p, 'paths');
+    final referencedFrom = <Uri, String>{};
+    // A path item used by several paths or webhooks repeats its
+    // operationIds.
+    void shared(String pointer, String user, APIPath path) {
+      final ref = path.referenceURI;
+      if (ref == null) {
+        return;
+      }
+      final other = referencedFrom[ref];
+      if (other == null) {
+        referencedFrom[ref] = user;
+      } else if (path.operations.values.any((o) => o.id != null)) {
+        _issue(
+          appendPointer(pointer, r'$ref'),
+          "Path item '#${ref.path}' is also used by $other, so its "
+          'operationIds are not unique.',
+        );
+      }
+    }
+
     d.paths.forEach((key, path) {
       if (key.startsWith('x-')) {
         return;
@@ -80,10 +122,29 @@ final class _Validator {
       if (!key.startsWith('/')) {
         _issue(pp, "Path '$key' must begin with '/'.");
       }
-      if (!_isRef(path)) {
+      final ref = path.referenceURI;
+      if (ref == null) {
         _path(pp, path, template: key);
+        return;
       }
+      // The path item is checked where it is defined, but only here is
+      // its template known.
+      path.operations.forEach((method, operation) {
+        _template(appendPointer(pp, method), key, [
+          ...path.parameters,
+          ...operation.parameters,
+        ]);
+      });
+      shared(pp, "path '$key'", path);
     });
+    final webhooks = d.webhooks;
+    if (webhooks != null) {
+      final wp = appendPointer(p, 'webhooks');
+      _each(wp, webhooks, _path);
+      webhooks.forEach((name, path) {
+        shared(appendPointer(wp, name), "webhook '$name'", path);
+      });
+    }
     final components = d.components;
     if (components != null) {
       _components(appendPointer(p, 'components'), components);
@@ -115,7 +176,11 @@ final class _Validator {
     _required(p, 'version', info.version);
     final license = info.license;
     if (license != null) {
-      _required(appendPointer(p, 'license'), 'name', license.name);
+      final lp = appendPointer(p, 'license');
+      _required(lp, 'name', license.name);
+      if (license.identifier != null && license.url != null) {
+        _issue(lp, 'License identifier and url are mutually exclusive.');
+      }
     }
   }
 
@@ -178,7 +243,9 @@ final class _Validator {
           return;
         }
         final type = schemes[name];
-        if (scopes.isNotEmpty &&
+        // OpenAPI 3.1 allows role names for the other types.
+        if (!_isOpenApi31 &&
+            scopes.isNotEmpty &&
             type != APISecuritySchemeType.oauth2 &&
             type != APISecuritySchemeType.openIdConnect) {
           _issue(
@@ -289,7 +356,9 @@ final class _Validator {
       _requestBody(appendPointer(p, 'requestBody'), body);
     }
     final rp = appendPointer(p, 'responses');
-    if (operation.responses.keys.every((key) => key.startsWith('x-'))) {
+    // OpenAPI 3.1 no longer requires responses, but given ones need a code.
+    if ((!_isOpenApi31 || operation.hasResponses) &&
+        operation.responses.keys.every((key) => key.startsWith('x-'))) {
       _issue(rp, 'An operation must have at least one response.');
     }
     for (final key in operation.responses.keys) {
@@ -405,6 +474,7 @@ final class _Validator {
     keys('callbacks', c.callbacks);
     keys('examples', c.examples);
     keys('links', c.links);
+    keys('pathItems', c.pathItems);
 
     _each(appendPointer(p, 'schemas'), c.schemas, _schema);
     _each(appendPointer(p, 'responses'), c.responses, _response);
@@ -415,6 +485,7 @@ final class _Validator {
     _each(appendPointer(p, 'callbacks'), c.callbacks, _callback);
     _each(appendPointer(p, 'examples'), c.examples, _example);
     _each(appendPointer(p, 'links'), c.links, _link);
+    _each(appendPointer(p, 'pathItems'), c.pathItems, _path);
   }
 
   void _schemaAt(String p, String key, APISchemaObject? schema) {
@@ -486,6 +557,8 @@ final class _Validator {
         });
       case APISecuritySchemeType.openIdConnect:
         _required(p, 'openIdConnectUrl', scheme.connectURL);
+      case APISecuritySchemeType.mutualTLS:
+        break;
     }
   }
 }
