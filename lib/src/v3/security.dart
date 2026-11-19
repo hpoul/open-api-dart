@@ -143,12 +143,10 @@ final class APISecurityScheme extends APIObject {
           connectURL = object.decode('openIdConnectUrl');
         }
         break;
-      default:
-        throw OpenApiFormatException(
-          'Unknown or missing security scheme type.',
-          pointer: object.pointerTo('type'),
-          source: object.decode<Object?>('type'),
-        );
+      case null:
+        // Missing or unknown type: left null, reported by
+        // APIDocument.validate().
+        break;
     }
   }
 

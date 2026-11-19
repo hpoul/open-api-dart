@@ -66,11 +66,27 @@
   offending value, such as `#/paths/~1pets/get/responses/200`. This covers
   wrong value types, a `null` inside a map or list of objects, non-string
   keys (as YAML can produce), non-string, unresolvable or non-local `$ref`s,
-  cycles of `$ref`s (which overflowed the stack), and unknown security scheme
-  types. Code that catches `ArgumentError` or `TypeError` around
+  and cycles of `$ref`s (which overflowed the stack). Code that catches `ArgumentError` or `TypeError` around
   `APIDocument.fromMap` should catch `FormatException` or
   `OpenApiFormatException` instead. Errors when encoding an invalid model
   built in code are still `ArgumentError`s.
+- New `APIDocument.validate()` returns an `OpenApiFormatException`, with a
+  pointer, for each problem it finds: missing REQUIRED fields (`info`,
+  `title`, `version`, parameter `name`/`in`, response `description`,
+  request body `content`, server `url`, variable `default`, tag and license
+  `name`, and the fields each security scheme type needs), operations
+  without responses, path keys not starting with `/`, invalid response keys
+  and component names, path template parameters that are not declared (or
+  declared but not in the template), duplicate parameters, operationIds and
+  tag names, parameters with both or neither of `schema` and `content`,
+  unknown OAuth2 flows, and security requirements that name no declared
+  scheme or give scopes to a scheme that takes none. It is not a full
+  validator: schemas are not checked, `$ref`s are checked at their target,
+  and an empty list does not prove a document valid.
+- Decoding stays lenient so that tools can read imperfect documents, and the
+  REQUIRED fields stay nullable. A document without `info`, or a security
+  scheme with a missing or unknown `type`, now decodes (with `null`) instead
+  of throwing; `validate()` reports them.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 

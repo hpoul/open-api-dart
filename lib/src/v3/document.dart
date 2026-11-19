@@ -6,6 +6,7 @@ import 'package:open_api_forked/src/v3/metadata.dart';
 import 'package:open_api_forked/src/v3/path.dart';
 import 'package:open_api_forked/src/v3/security.dart';
 import 'package:open_api_forked/src/v3/server.dart';
+import 'package:open_api_forked/src/validation.dart';
 
 /// This is the root document object of the OpenAPI document.
 final class APIDocument extends APIObject {
@@ -120,6 +121,18 @@ final class APIDocument extends APIObject {
     return target;
   }
 
+  /// Checks this document for missing REQUIRED fields and similar rule
+  /// violations, and returns one [OpenApiFormatException] per problem.
+  ///
+  /// Decoding is lenient: [APIDocument.fromMap] accepts a document that
+  /// lacks, say, a response `description`, so that tools can still read it.
+  /// Call this to find such problems. An empty list means none were found;
+  /// it does not check everything the specification requires.
+  ///
+  /// `$ref`s are not followed: a referenced object is checked where it is
+  /// defined.
+  List<OpenApiFormatException> validate() => validateDocument(this);
+
   /// This string MUST be the semantic version number of the OpenAPI Specification version that the OpenAPI document uses.
   ///
   /// REQUIRED. The openapi field SHOULD be used by tooling specifications and clients to interpret the OpenAPI document. This is not related to the API info.version string.
@@ -162,7 +175,7 @@ final class APIDocument extends APIObject {
     super.decode(object);
 
     version = object.decode('openapi');
-    info = object.decodeObject('info', () => APIInfo.empty())!;
+    info = object.decodeObject('info', () => APIInfo.empty());
     servers = object.decodeObjects(
       'servers',
       () => APIServerDescription.empty(),
