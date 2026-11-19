@@ -11,8 +11,48 @@ class APIDocument extends APIObject {
   APIDocument();
 
   /// Creates a specification from decoded JSON or YAML document object.
+  ///
+  /// Throws an [ArgumentError] if the document contains a `$ref` that points
+  /// to another file, or that does not point to an object in this document.
   APIDocument.fromMap(Map<String, dynamic> map) {
+    _checkReferences(map, map);
     decode(KeyedArchive.unarchive(map, allowReferences: true));
+  }
+
+  /// Validates every `$ref` in [node] before [KeyedArchive] resolves them,
+  /// so that bad references fail with a clear message instead of a
+  /// [TypeError], and references into other files are not silently
+  /// resolved against this document.
+  static void _checkReferences(Map root, dynamic node) {
+    if (node is List) {
+      for (final item in node) {
+        _checkReferences(root, item);
+      }
+      return;
+    }
+    if (node is! Map) {
+      return;
+    }
+    final ref = node[r"$ref"];
+    if (ref is String) {
+      if (!ref.startsWith("#")) {
+        throw ArgumentError(
+            "Invalid document. Reference '$ref' points to another document; "
+            "only references within the same document ('#/...') are supported.");
+      }
+      dynamic target = root;
+      for (final segment in Uri.parse(Uri.parse(ref).fragment).pathSegments) {
+        target = target is Map ? target[segment] : null;
+      }
+      if (target is! Map) {
+        throw ArgumentError(
+            "Invalid document. Reference '$ref' does not point to an object "
+            "in document.");
+      }
+    }
+    for (final value in node.values) {
+      _checkReferences(root, value);
+    }
   }
 
   /// This string MUST be the semantic version number of the OpenAPI Specification version that the OpenAPI document uses.
@@ -79,7 +119,7 @@ class APIDocument extends APIObject {
     object.encodeObjects("servers", servers);
     object.encodeObjectMap("paths", paths);
     object.encodeObject("components", components);
-    object.encode("security", security);
+    object.encodeObjects("security", security);
     object.encodeObjects("tags", tags);
   }
 }
