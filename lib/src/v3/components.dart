@@ -5,6 +5,7 @@ import 'package:open_api_forked/src/v3/example.dart';
 import 'package:open_api_forked/src/v3/header.dart';
 import 'package:open_api_forked/src/v3/link.dart';
 import 'package:open_api_forked/src/v3/parameter.dart';
+import 'package:open_api_forked/src/v3/path.dart';
 import 'package:open_api_forked/src/v3/request_body.dart';
 import 'package:open_api_forked/src/v3/response.dart';
 import 'package:open_api_forked/src/v3/schema.dart';
@@ -44,6 +45,9 @@ final class APIComponents extends APIObject {
 
   /// An object to hold reusable [APICallback?].
   Map<String, APICallback> callbacks = {};
+
+  /// An object to hold reusable [APIPath]s (OpenAPI 3.1).
+  Map<String, APIPath> pathItems = {};
 
   /// Returns a component definition for [uri].
   ///
@@ -91,6 +95,9 @@ final class APIComponents extends APIObject {
       case 'links':
         namedMap = links;
         break;
+      case 'pathItems':
+        namedMap = pathItems;
+        break;
       default:
         throw ArgumentError(
           "Invalid reference URI: component type '${segments[1]}' does not exist.",
@@ -130,6 +137,7 @@ final class APIComponents extends APIObject {
         {};
     links = object.decodeObjectMap('links', () => APILink.empty()) ?? {};
     callbacks = object.decodeObjectMap('callbacks', () => APICallback()) ?? {};
+    pathItems = object.decodeObjectMap('pathItems', () => APIPath()) ?? {};
   }
 
   @override
@@ -145,5 +153,6 @@ final class APIComponents extends APIObject {
     object.encodeObjectMap('securitySchemes', securitySchemes, omitEmpty: true);
     object.encodeObjectMap('links', links, omitEmpty: true);
     object.encodeObjectMap('callbacks', callbacks, omitEmpty: true);
+    object.encodeObjectMap('pathItems', pathItems, omitEmpty: true);
   }
 }

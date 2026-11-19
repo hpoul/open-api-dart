@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- OpenAPI 3.1 documents, part 1 (document level):
+  `APIDocument.webhooks`, `jsonSchemaDialect` and `isOpenApi31`,
+  `APIComponents.pathItems` (also in `resolveUri`), `APIInfo.summary` and
+  `APILicense.identifier`. A 3.1 document without `paths` decodes, and is
+  encoded without them. Webhook operations are not part of
+  `APIDocument.operations`.
+- A path item that is a `$ref` (for example to `components/pathItems`) now
+  exposes the operations of the path item it points to. Before, its
+  `operations` were empty.
+- `validate()` reports an `openapi` version other than 3.0.x or 3.1.x, a
+  license with both `identifier` and `url`, and checks webhooks and
+  `components/pathItems`.
+
 ## 4.0.0-dev.1 (unreleased)
 
 - **Breaking:** removed Swagger 2.0 support (`package:open_api_forked/v2.dart`

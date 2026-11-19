@@ -11,6 +11,7 @@ List<OpenApiFormatException> validateDocument(APIDocument document) {
 }
 
 final RegExp _componentKey = RegExp(r'^[a-zA-Z0-9.\-_]+$');
+final RegExp _supportedVersion = RegExp(r'^3\.[01]\.\d+$');
 final RegExp _responseKey = RegExp(r'^(default|[1-5]([0-9]{2}|XX))$');
 final RegExp _templateParameter = RegExp(r'\{([^{}]+)\}');
 const _flowNames = {
@@ -62,6 +63,13 @@ final class _Validator {
   void document(APIDocument d) {
     const p = '#';
     _required(p, 'openapi', d.version);
+    final version = d.version;
+    if (version != null && !_supportedVersion.hasMatch(version)) {
+      _issue(
+        appendPointer(p, 'openapi'),
+        "OpenAPI version '$version' is not supported; expected 3.0.x or 3.1.x.",
+      );
+    }
     _required(p, 'info', d.info);
     final info = d.info;
     if (info != null) {
@@ -84,6 +92,15 @@ final class _Validator {
         _path(pp, path, template: key);
       }
     });
+    final webhooks = d.webhooks;
+    if (webhooks != null) {
+      _each(
+        appendPointer(p, 'webhooks'),
+        webhooks,
+        _path,
+        skipExtensions: true,
+      );
+    }
     final components = d.components;
     if (components != null) {
       _components(appendPointer(p, 'components'), components);
@@ -115,7 +132,11 @@ final class _Validator {
     _required(p, 'version', info.version);
     final license = info.license;
     if (license != null) {
-      _required(appendPointer(p, 'license'), 'name', license.name);
+      final lp = appendPointer(p, 'license');
+      _required(lp, 'name', license.name);
+      if (license.identifier != null && license.url != null) {
+        _issue(lp, 'License identifier and url are mutually exclusive.');
+      }
     }
   }
 
@@ -405,6 +426,7 @@ final class _Validator {
     keys('callbacks', c.callbacks);
     keys('examples', c.examples);
     keys('links', c.links);
+    keys('pathItems', c.pathItems);
 
     _each(appendPointer(p, 'schemas'), c.schemas, _schema);
     _each(appendPointer(p, 'responses'), c.responses, _response);
@@ -415,6 +437,7 @@ final class _Validator {
     _each(appendPointer(p, 'callbacks'), c.callbacks, _callback);
     _each(appendPointer(p, 'examples'), c.examples, _example);
     _each(appendPointer(p, 'links'), c.links, _link);
+    _each(appendPointer(p, 'pathItems'), c.pathItems, _path);
   }
 
   void _schemaAt(String p, String key, APISchemaObject? schema) {
