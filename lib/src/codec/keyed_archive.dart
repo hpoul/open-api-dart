@@ -281,7 +281,13 @@ final class KeyedArchive extends Object
   /// pairs will be searched first. If [key] is not found, the referenced object's key-values pairs are searched.
   /// If no match is found, null is returned.
   T? decode<T>(String? key) {
-    final v = _getValue(key);
+    final v = switch (_getValue(key)) {
+      // Data that a `$ref` points into was read as objects; hand it out
+      // as plain data all the same.
+      final KeyedArchive archive => archive.toPrimitive(),
+      final ListArchive list => list.toPrimitive(),
+      final Object? value => value,
+    };
     if (v == null) {
       return null;
     }
@@ -303,7 +309,7 @@ final class KeyedArchive extends Object
     if (v is! T) {
       throw _typeMismatch(key, v, _describeType<T>());
     }
-    return v;
+    return v as T;
   }
 
   /// Describes [T] for error messages, e.g. `an integer` for [int].

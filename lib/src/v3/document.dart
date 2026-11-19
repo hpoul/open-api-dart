@@ -32,7 +32,7 @@ final class APIDocument extends APIObject {
   /// document.
   APIDocument.fromMap(Map<String, dynamic> map) {
     final prepared = Map<String, dynamic>.from(
-      _prepare(map, map, '#', _Node.object, _referencedPointers(map))! as Map,
+      _prepare(map, map, '#', _Node.object, _References.of(map))! as Map,
     );
     decode(KeyedArchive.unarchive(prepared, allowReferences: true));
   }
@@ -75,80 +75,48 @@ final class APIDocument extends APIObject {
   /// such as `examples` or `properties`, a key like `default` is a name.
   ///
   /// Free-form data that a `$ref` points into (such as shared definitions
-  /// under an `x-` key) is read as OpenAPI objects instead; [referenced]
-  /// holds the pointers of everything a `$ref` passes through.
+  /// under an `x-` key) is read as OpenAPI objects instead, see
+  /// [_References].
   static Object? _prepare(
     Map<String, dynamic> root,
     Object? node,
     String pointer,
     _Node kind,
-    Set<String> referenced,
+    _References refs,
   ) {
     if (node is List) {
       return [
         for (final (i, item) in node.indexed)
-          _prepare(
-            root,
-            item,
-            appendPointer(pointer, i),
-            _Node.object,
-            referenced,
-          ),
+          _prepare(root, item, appendPointer(pointer, i), _Node.object, refs),
       ];
     }
     if (node is! Map) {
       return node;
     }
-    _checkReference(root, node, pointer);
+    if (kind != _Node.passThrough) {
+      _checkReference(root, node, pointer);
+    }
     return <dynamic, dynamic>{
       for (final MapEntry(:key, :value) in node.entries)
         key: switch (key) {
-          String() when kind.isFreeForm(key, value) =>
-            referenced.contains(appendPointer(pointer, key))
-                ? _prepare(
-                    root,
-                    value,
-                    appendPointer(pointer, key),
-                    _Node.object,
-                    referenced,
-                  )
-                : FreeForm(value, appendPointer(pointer, key)),
-          String() => _prepare(
-            root,
+          String() => switch (refs.kindOf(
+            kind,
+            key,
             value,
             appendPointer(pointer, key),
-            kind.child(key, value),
-            referenced,
-          ),
+          )) {
+            null => FreeForm(value, appendPointer(pointer, key)),
+            final child => _prepare(
+              root,
+              value,
+              appendPointer(pointer, key),
+              child,
+              refs,
+            ),
+          },
           _ => value,
         },
     };
-  }
-
-  /// The pointers of every map a `$ref` in [node] passes through, such as
-  /// `#/x-defs` and `#/x-defs/S` for `#/x-defs/S`. Collected from the whole
-  /// document, including `$ref`-shaped free-form data, which at worst makes
-  /// some data be read as objects.
-  static Set<String> _referencedPointers(Object? node) {
-    final pointers = <String>{};
-    void collect(Object? node) {
-      if (node is List) {
-        node.forEach(collect);
-      } else if (node is Map) {
-        final ref = node[r'$ref'];
-        if (ref is String && ref.startsWith('#/')) {
-          var pointer = '#';
-          for (final segment in ref.substring(2).split('/')) {
-            pointer = '$pointer/$segment';
-            pointers.add(pointer);
-          }
-        }
-        node.values.forEach(collect);
-      }
-    }
-
-    collect(node);
-    return pointers;
   }
 
   static void _checkReference(
@@ -373,12 +341,16 @@ enum _Node {
   callbackMap,
 
   /// A map from names to strings, or free-form data.
-  data;
+  data,
+
+  /// Free-form data on the way to something a `$ref` points into: only
+  /// the parts on that way are read as objects.
+  passThrough;
 
   /// The kind of the value for [key] in a map of this kind.
   _Node child(String key, Object? value) => switch (this) {
     _ when value is! Map => _Node.object,
-    nameMap || extensibleMap => _Node.object,
+    nameMap || extensibleMap || passThrough => _Node.object,
     components => switch (key) {
       'links' => _Node.linkMap,
       'callbacks' => _Node.callbackMap,
@@ -409,6 +381,84 @@ enum _Node {
     link =>
       key.startsWith('x-') || APIDocument._freeFormLinkFields.contains(key),
     components || extensibleMap => key.startsWith('x-'),
-    nameMap || linkMap || callbackMap || data => false,
+    nameMap || linkMap || callbackMap || data || passThrough => false,
   };
+}
+
+/// The `$ref`s of a document, for reading free-form data that a `$ref`
+/// points into (such as shared definitions under an `x-` key) as objects.
+final class _References {
+  _References._(this.targets, this.prefixes);
+
+  /// Collects the `$ref`s outside free-form data, including those in
+  /// free-form data that other `$ref`s point into, until no more are found.
+  factory _References.of(Map<String, dynamic> document) {
+    var refs = _References._({}, {});
+    while (true) {
+      final found = _References._({}, {});
+      refs._collect(document, '#', _Node.object, found);
+      if (found.targets.length == refs.targets.length) {
+        return refs;
+      }
+      refs = found;
+    }
+  }
+
+  /// The pointers that `$ref`s point to, as written (escaped).
+  final Set<String> targets;
+
+  /// The pointers that `$ref`s pass through on the way to their targets.
+  final Set<String> prefixes;
+
+  void _add(String ref) {
+    if (!ref.startsWith('#/') || !targets.add(ref)) {
+      return;
+    }
+    var pointer = '#';
+    for (final segment in ref.substring(2).split('/')) {
+      pointer = '$pointer/$segment';
+      prefixes.add(pointer);
+    }
+  }
+
+  /// How the value for [key] at [pointer] is read in a map of [kind]:
+  /// null for free-form data.
+  _Node? kindOf(_Node kind, String key, Object? value, String pointer) {
+    if (kind != _Node.passThrough && !kind.isFreeForm(key, value)) {
+      return kind.child(key, value);
+    }
+    if (targets.contains(pointer)) {
+      return _Node.object;
+    }
+    if (value is Map && prefixes.contains(pointer)) {
+      return _Node.passThrough;
+    }
+    return null;
+  }
+
+  void _collect(Object? node, String pointer, _Node kind, _References found) {
+    if (node is List) {
+      if (kind != _Node.passThrough) {
+        for (final (i, item) in node.indexed) {
+          _collect(item, appendPointer(pointer, i), _Node.object, found);
+        }
+      }
+      return;
+    }
+    if (node is! Map) {
+      return;
+    }
+    final ref = node[r'$ref'];
+    if (ref is String && kind != _Node.passThrough) {
+      found._add(ref);
+    }
+    node.forEach((key, value) {
+      if (key is String) {
+        final child = kindOf(kind, key, value, appendPointer(pointer, key));
+        if (child != null) {
+          _collect(value, appendPointer(pointer, key), child, found);
+        }
+      }
+    });
+  }
 }

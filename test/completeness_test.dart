@@ -499,6 +499,73 @@ void main() {
       expect(doc.asMap, throwsA(isA<OpenApiFormatException>()));
     });
 
+    test('only what a reference points into is read as objects', () {
+      final spec = _spec();
+      spec['x-defs'] = {
+        'S': {'type': 'string'},
+        'Other': {
+          'note': {r'$ref': 'http://example.com/x'},
+        },
+      };
+      spec['x-meta'] = {
+        'a': {r'$ref': 'http://example.com/x'},
+      };
+      final components = spec['components'] as Map;
+      components['schemas']['A'] = {r'$ref': '#/x-defs/S'};
+      // `$ref`-shaped data does not make anything an object.
+      components['schemas']['Pet']['example'] = {r'$ref': '#/x-meta'};
+      components['examples']['E'] = {
+        'value': {
+          'schema': {r'$ref': 'http://json-schema.org/draft-07/schema'},
+        },
+      };
+      components['examples']['F'] = {
+        'value': {r'$ref': '#/components/examples/E/value'},
+      };
+      final doc = APIDocument.fromMap(spec);
+      expect(doc.components!.schemas['A']!.type, APIType.string);
+      expect(doc.extensions['x-defs'], spec['x-defs']);
+      expect(json.decode(json.encode(doc.asMap())), spec);
+    });
+
+    test('data that a reference points into is still plain data', () {
+      final spec = _spec();
+      final schemas = spec['components']['schemas'] as Map;
+      schemas['S'] = {
+        'example': {
+          'k': {'a': 1},
+        },
+      };
+      schemas['T'] = {r'$ref': '#/components/schemas/S/example'};
+      final doc = APIDocument.fromMap(spec);
+      final example = doc.components!.schemas['S']!.example;
+      expect(example, {
+        'k': {'a': 1},
+      });
+      expect(example.runtimeType.toString(), contains('Map<String, dynamic>'));
+    });
+
+    test('many references into an extension encode in linear time', () {
+      final spec = _spec();
+      const n = 2000;
+      spec['x-defs'] = {
+        for (var i = 0; i < n; i++)
+          'S$i': {
+            'properties': {
+              'next': {r'$ref': '#/x-defs/S${(i + 1) % n}'},
+            },
+          },
+      };
+      final schemas = spec['components']['schemas'] as Map;
+      for (var i = 0; i < n; i++) {
+        schemas['C$i'] = {r'$ref': '#/x-defs/S$i'};
+      }
+      final doc = APIDocument.fromMap(spec);
+      final watch = Stopwatch()..start();
+      doc.asMap();
+      expect(watch.elapsed, lessThan(const Duration(seconds: 2)));
+    });
+
     test('x- extensions in paths, responses and callbacks are data', () {
       final spec = _spec();
       final path = spec['paths']['/pets/{id}'] as Map;

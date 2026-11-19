@@ -14,6 +14,10 @@ final class ReferenceResolver {
 
   final KeyedArchive document;
 
+  /// Archived copies of raw maps met on the way to a target, so that each
+  /// is copied once.
+  final _archived = Expando<KeyedArchive>();
+
   /// The object at [ref], or null if there is none (or it is not an
   /// object, for example free-form data).
   KeyedArchive? resolve(Uri ref) {
@@ -25,7 +29,10 @@ final class ReferenceResolver {
         // An extension value in an encoded document, such as shared
         // definitions under an `x-` key. Only checked to exist: a copy,
         // because the archive converts maps in place.
-        Map() => KeyedArchive.fromMap(FreeForm.plain(next, '#')! as Map, '#'),
+        Map() => _archived[next] ??= KeyedArchive.fromMap(
+          FreeForm.plain(next, '#')! as Map,
+          '#',
+        ),
         _ => null,
       };
     }

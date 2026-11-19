@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
-import 'package:open_api_forked/src/codec/list_archive.dart';
 
 /// Base class of every object in an OpenAPI document.
 ///
@@ -26,13 +25,7 @@ abstract base class APIObject {
 
     final extensionKeys = object.keys.where((k) => k.startsWith('x-'));
     for (final key in extensionKeys) {
-      extensions[key] = switch (object.decode<Object?>(key)) {
-        // An extension that a `$ref` points into is read as objects;
-        // hand out plain data all the same.
-        final KeyedArchive value => value.toPrimitive(),
-        final ListArchive value => value.toPrimitive(),
-        final value => value,
-      };
+      extensions[key] = object.decode<Object?>(key);
     }
   }
 
