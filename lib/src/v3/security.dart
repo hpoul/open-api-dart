@@ -9,9 +9,6 @@ enum APISecuritySchemeType {
   apiKey('apiKey'),
   http('http'),
   oauth2('oauth2'),
-
-  /// Not a valid OpenAPI value; use [openIdConnect].
-  openID('openID'),
   openIdConnect('openIdConnect');
 
   const APISecuritySchemeType(this.jsonValue);
@@ -24,8 +21,10 @@ enum APISecuritySchemeType {
   };
 
   /// Returns the type for [jsonValue], or `null` if it is `null` or unknown.
+  ///
+  /// The non-standard `openID` decodes as [openIdConnect].
   static APISecuritySchemeType? fromJson(String? jsonValue) =>
-      _byJsonValue[jsonValue];
+      jsonValue == 'openID' ? openIdConnect : _byJsonValue[jsonValue];
 
   String toJson() => jsonValue;
 }
@@ -53,8 +52,12 @@ class APISecurityScheme extends APIObject {
 
   APISecurityScheme.oauth2(this.flows) : type = APISecuritySchemeType.oauth2;
 
+  APISecurityScheme.openIdConnect(this.connectURL)
+    : type = APISecuritySchemeType.openIdConnect;
+
+  @Deprecated('Use APISecurityScheme.openIdConnect.')
   APISecurityScheme.openID(this.connectURL)
-    : type = APISecuritySchemeType.openID;
+    : type = APISecuritySchemeType.openIdConnect;
 
   /// The type of the security scheme.
   ///
@@ -100,7 +103,7 @@ class APISecurityScheme extends APIObject {
   ///
   /// This MUST be in the form of a URL.
   ///
-  /// For openID only. REQUIRED if so.
+  /// For openIdConnect only. REQUIRED if so.
   Uri? connectURL;
 
   @override
@@ -131,7 +134,6 @@ class APISecurityScheme extends APIObject {
           format = object.decode('bearerFormat');
         }
         break;
-      case APISecuritySchemeType.openID:
       case APISecuritySchemeType.openIdConnect:
         {
           connectURL = object.decode('openIdConnectUrl');
@@ -193,7 +195,6 @@ class APISecurityScheme extends APIObject {
           object.encode('bearerFormat', format);
         }
         break;
-      case APISecuritySchemeType.openID:
       case APISecuritySchemeType.openIdConnect:
         {
           if (connectURL == null) {
@@ -302,7 +303,7 @@ class APISecurityRequirement extends APIObject {
 
   /// Each name MUST correspond to a security scheme which is declared in [APIComponents.securitySchemes].
   ///
-  /// If the security scheme is of type [APISecuritySchemeType.oauth2] or [APISecuritySchemeType.openID], then the value is a list of scope names required for the execution. For other security scheme types, the array MUST be empty.
+  /// If the security scheme is of type [APISecuritySchemeType.oauth2] or [APISecuritySchemeType.openIdConnect], then the value is a list of scope names required for the execution. For other security scheme types, the array MUST be empty.
   Map<String, List<String>> requirements = {};
 
   @override

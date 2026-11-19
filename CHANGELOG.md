@@ -13,6 +13,10 @@
 - `APIType`, `APIParameterLocation` and `APISecuritySchemeType` are enhanced
   enums with `jsonValue`, `fromJson` (returns `null` for unknown values) and
   `toJson`. The `*Codec` classes are deprecated and will be removed.
+- **Breaking:** removed `APISecuritySchemeType.openID`. The non-standard
+  `openID` type still decodes, as `openIdConnect`, and encodes as
+  `openIdConnect`. `APISecurityScheme.openID()` is deprecated in favour of
+  `APISecurityScheme.openIdConnect()`.
 
 ## 3.0.1
 
