@@ -98,8 +98,7 @@ class APIComponents extends APIObject {
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    schemas =
-        object.decodeObjectMap("schemas", () => APISchemaObject()) ?? {};
+    schemas = object.decodeObjectMap("schemas", () => APISchemaObject()) ?? {};
     responses = object.decodeObjectMap("responses", () => APIResponse.empty());
     parameters =
         object.decodeObjectMap("parameters", () => APIParameter.empty());
