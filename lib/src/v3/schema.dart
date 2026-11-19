@@ -284,7 +284,7 @@ final class APISchemaObject extends APIObject {
   ///
   /// Setting this writes `type` as an array, as OpenAPI 3.1 does. Types
   /// this package does not know are left out.
-  List<APIType> get types => _types ?? [?_type];
+  List<APIType> get types => _types ?? List.unmodifiable([?_type]);
 
   set types(List<APIType> value) {
     _types = List.unmodifiable(value);
@@ -327,7 +327,8 @@ final class APISchemaObject extends APIObject {
   ///
   /// Setting it keeps the form the schema was decoded in: a schema whose
   /// `type` had `"null"` or was an array adds or removes `"null"` there,
-  /// any other schema writes `nullable`.
+  /// any other schema writes `nullable`, which OpenAPI 3.1 does not have:
+  /// set [types] first to make a 3.1 schema nullable.
   bool? get isNullable => (_nullable ?? false) || _nullType;
 
   set isNullable(bool? n) {
@@ -498,10 +499,11 @@ final class APISchemaObject extends APIObject {
       for (final type in types) type.jsonValue,
       if (_nullType) 'null',
     ];
-    if (_typeIsList || typeNames.length > 1) {
-      object.encode('type', typeNames);
-    } else if (typeNames.isNotEmpty) {
+    if (typeNames.length == 1 && !_typeIsList) {
       object.encode('type', typeNames.single);
+    } else if (typeNames.isNotEmpty) {
+      // An empty array is not a valid `type`, so none is written then.
+      object.encode('type', typeNames);
     }
     object.encode('const', constValue);
     object.encode('examples', examples);

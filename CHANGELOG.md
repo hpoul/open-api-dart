@@ -20,10 +20,12 @@
     `effectiveExclusiveMaximum` give the limit for either form.
   - `constValue`, `examples` (a list), `contentMediaType`,
     `contentEncoding`.
-  - Keys next to a `$ref` (OpenAPI 3.1 Reference `summary`/`description`,
-    and any keyword next to a schema `$ref`) are encoded again, with the
-    current field values: `APIObject.referenceSiblingKeys`. Before, they
-    were decoded but dropped on encode.
+  - Keys next to a `$ref` (OpenAPI 3.1 Reference `description`, and the
+    keywords next to a schema `$ref`) are encoded again, with the current
+    field values: `APIObject.referenceSiblingKeys`. Before, they were
+    decoded but dropped on encode. Only keys the object models are
+    written: a `summary` next to a parameter or response `$ref` is
+    dropped, as those objects have no `summary`.
   - A `type` that is not a string or a list of strings, or an exclusive
     limit that is neither a boolean nor a number, is an
     `OpenApiFormatException`.

@@ -563,6 +563,12 @@ void main() {
         'type': ['number', 'null'],
       });
       expect(_encodedSchema(APISchemaObject.string()), {'type': 'string'});
+      // No types and not nullable: no `type`, not an empty array.
+      expect(_encodedSchema(APISchemaObject()..types = []), isEmpty);
+      expect(
+        () => APISchemaObject.string().types.add(APIType.number),
+        throwsUnsupportedError,
+      );
     });
 
     test('a type that is not a string or list is a format error', () {
@@ -739,6 +745,65 @@ void main() {
         'pet': {r'$ref': '#/components/schemas/Pet', 'description': 'new'},
         'other': {r'$ref': '#/components/schemas/Pet', 'description': 'added'},
       });
+    });
+
+    test('a sibling that leads back to the reference ends', () {
+      final doc = _doc({
+        'openapi': '3.1.0',
+        'info': {'title': 't', 'version': '1'},
+        'components': {
+          'schemas': {
+            'Pet': {
+              'type': 'object',
+              'properties': {
+                'parent': {
+                  r'$ref': '#/components/schemas/Pet',
+                  'description': 'The parent',
+                },
+              },
+            },
+          },
+        },
+      });
+      final pet = doc.components!.schemas['Pet']!;
+      final parent = pet.properties['parent']!;
+      // The reference holds its target's properties, which hold itself.
+      expect(parent.properties['parent'], same(parent));
+      parent.referenceSiblingKeys.add('properties');
+      final encoded =
+          ((_encoded(doc)['components'] as Map)['schemas'] as Map)['Pet']
+              as Map;
+      expect(encoded['properties']['parent'], {
+        r'$ref': '#/components/schemas/Pet',
+        'description': 'The parent',
+        'properties': {
+          'parent': {r'$ref': '#/components/schemas/Pet'},
+        },
+      });
+    });
+
+    test('3.0 nullable next to a ref round trips', () {
+      final map = {
+        'openapi': '3.0.3',
+        'info': {'title': 't', 'version': '1'},
+        'paths': <String, Object?>{},
+        'components': {
+          'schemas': {
+            'Pet': {'type': 'object'},
+            'Owner': {
+              'type': 'object',
+              'properties': {
+                'pet': {r'$ref': '#/components/schemas/Pet', 'nullable': true},
+              },
+            },
+          },
+        },
+      };
+      final doc = _doc(map);
+      final pet = doc.components!.schemas['Owner']!.properties['pet']!;
+      expect(pet.isNullable, isTrue);
+      expect(pet.type, APIType.object);
+      expect(_encoded(doc), map);
     });
   });
 }
