@@ -118,18 +118,16 @@ void main() {
     );
   });
 
-  test('an unknown security scheme type', () {
-    expect(
-      () => APIDocument.fromMap(
-        spec({})
-          ..['components'] = {
-            'securitySchemes': {
-              'k': {'type': 'magic'},
-            },
+  test('an unknown security scheme type decodes, for validate()', () {
+    final doc = APIDocument.fromMap(
+      spec({})
+        ..['components'] = {
+          'securitySchemes': {
+            'k': {'type': 'magic'},
           },
-      ),
-      failsAt('#/components/securitySchemes/k/type'),
+        },
     );
+    expect(doc.components!.securitySchemes['k']!.type, isNull);
   });
 
   test('a callback with a non-object path item', () {

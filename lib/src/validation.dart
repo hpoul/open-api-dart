@@ -1,9 +1,9 @@
 import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/v3.dart';
 
-/// Checks [document] for missing REQUIRED fields and similar rule
-/// violations that decoding tolerates, and returns one
-/// [OpenApiFormatException] per problem, in document order.
+/// Checks [document] for missing REQUIRED fields and broken MUST rules that
+/// decoding tolerates, and returns one [OpenApiFormatException] per
+/// problem, in document order.
 List<OpenApiFormatException> validateDocument(APIDocument document) {
   final v = _Validator();
   v.document(document);
@@ -11,13 +11,24 @@ List<OpenApiFormatException> validateDocument(APIDocument document) {
 }
 
 final RegExp _componentKey = RegExp(r'^[a-zA-Z0-9.\-_]+$');
+final RegExp _responseKey = RegExp(r'^(default|[1-5]([0-9]{2}|XX))$');
+final RegExp _templateParameter = RegExp(r'\{([^{}]+)\}');
+const _flowNames = {
+  'implicit',
+  'password',
+  'clientCredentials',
+  'authorizationCode',
+};
 
 final class _Validator {
   final issues = <OpenApiFormatException>[];
 
-  /// Security scheme names declared in components, for checking
+  /// Security schemes declared in components, by name, for checking
   /// requirements. Null if the document has no components.
-  Set<String>? _schemes;
+  Map<String, APISecuritySchemeType?>? _schemes;
+
+  /// Pointer of the first operation with each operationId.
+  final _operationIds = <String, String>{};
 
   void _issue(String pointer, String message) =>
       issues.add(OpenApiFormatException(message, pointer: pointer));
@@ -25,6 +36,17 @@ final class _Validator {
   void _required(String pointer, String key, Object? value) {
     if (value == null) {
       _issue(appendPointer(pointer, key), "Missing required field '$key'.");
+    }
+  }
+
+  /// Like [_required], for a field decoded from a fixed set of values, where
+  /// null also means the value was not one of them.
+  void _requiredEnum(String pointer, String key, Object? value) {
+    if (value == null) {
+      _issue(
+        appendPointer(pointer, key),
+        "Missing or invalid required field '$key'.",
+      );
     }
   }
 
@@ -39,16 +61,36 @@ final class _Validator {
     if (info != null) {
       _info(appendPointer(p, 'info'), info);
     }
-    _schemes = d.components?.securitySchemes.keys.toSet();
+    _schemes = d.components?.securitySchemes.map(
+      (name, scheme) => MapEntry(name, scheme.type),
+    );
     _servers(p, d.servers);
-    _each(appendPointer(p, 'paths'), d.paths, _path);
+    final paths = appendPointer(p, 'paths');
+    d.paths.forEach((key, path) {
+      if (key.startsWith('x-')) {
+        return;
+      }
+      final pp = appendPointer(paths, key);
+      if (!key.startsWith('/')) {
+        _issue(pp, "Path '$key' must begin with '/'.");
+      }
+      if (!_isRef(path)) {
+        _path(pp, path, template: key);
+      }
+    });
     final components = d.components;
     if (components != null) {
       _components(appendPointer(p, 'components'), components);
     }
     _security(p, d.security);
+    final tagNames = <String>{};
     for (final (i, tag) in d.tags.indexed) {
-      _required(appendPointer(appendPointer(p, 'tags'), i), 'name', tag.name);
+      final tp = appendPointer(appendPointer(p, 'tags'), i);
+      _required(tp, 'name', tag.name);
+      final name = tag.name;
+      if (name != null && !tagNames.add(name)) {
+        _issue(appendPointer(tp, 'name'), "Duplicate tag name '$name'.");
+      }
     }
   }
 
@@ -64,10 +106,11 @@ final class _Validator {
   void _each<T extends APIObject>(
     String p,
     Map<String, T> map,
-    void Function(String, T) check,
-  ) {
+    void Function(String, T) check, {
+    bool skipExtensions = false,
+  }) {
     map.forEach((key, value) {
-      if (!_isRef(value)) {
+      if (!_isRef(value) && !(skipExtensions && key.startsWith('x-'))) {
         check(appendPointer(p, key), value);
       }
     });
@@ -103,46 +146,141 @@ final class _Validator {
       return;
     }
     for (final (i, requirement) in security.indexed) {
-      for (final name in requirement.requirements.keys) {
-        if (schemes == null || !schemes.contains(name)) {
+      requirement.requirements.forEach((name, scopes) {
+        final rp = appendPointer(
+          appendPointer(appendPointer(p, 'security'), i),
+          name,
+        );
+        if (schemes == null || !schemes.containsKey(name)) {
           _issue(
-            appendPointer(appendPointer(appendPointer(p, 'security'), i), name),
+            rp,
             "Security requirement '$name' names no security scheme in "
             'components.',
           );
+          return;
         }
+        final type = schemes[name];
+        if (scopes.isNotEmpty &&
+            type != APISecuritySchemeType.oauth2 &&
+            type != APISecuritySchemeType.openIdConnect) {
+          _issue(
+            rp,
+            "Security requirement '$name' must have no scopes, because "
+            'its scheme is not oauth2 or openIdConnect.',
+          );
+        }
+      });
+    }
+  }
+
+  /// Checks a path item. [template] is its key in `paths`, whose
+  /// `{parameters}` must be declared; callback path items have runtime
+  /// expressions instead and pass null.
+  void _path(String p, APIPath path, {String? template}) {
+    _parameters(p, path.parameters);
+    path.operations.forEach((method, operation) {
+      if (_isRef(operation)) {
+        return;
+      }
+      final op = appendPointer(p, method);
+      _operation(op, operation);
+      if (template != null) {
+        _template(op, template, [...path.parameters, ...operation.parameters]);
+      }
+    });
+  }
+
+  /// Checks that the `{names}` in [template] and the path parameters in
+  /// [parameters] match one to one.
+  void _template(String p, String template, List<APIParameter> parameters) {
+    final names = {
+      for (final m in _templateParameter.allMatches(template)) m[1]!,
+    };
+    final declared = {
+      for (final APIParameter(:location, :name) in parameters)
+        if (location == APIParameterLocation.path && name != null) name,
+    };
+    for (final name in names.difference(declared)) {
+      _issue(
+        appendPointer(p, 'parameters'),
+        "Path parameter '$name' in '$template' is not declared.",
+      );
+    }
+    for (final name in declared.difference(names)) {
+      _issue(
+        appendPointer(p, 'parameters'),
+        "Path parameter '$name' does not appear in '$template'.",
+      );
+    }
+  }
+
+  void _parameters(String p, List<APIParameter> parameters) {
+    final lp = appendPointer(p, 'parameters');
+    _eachIndexed(lp, parameters, _parameter);
+    final seen = <(String?, APIParameterLocation?)>{};
+    for (final (i, parameter) in parameters.indexed) {
+      final key = (parameter.name, parameter.location);
+      if (parameter.name != null &&
+          parameter.location != null &&
+          !seen.add(key)) {
+        _issue(
+          appendPointer(lp, i),
+          "Duplicate parameter '${parameter.name}' in "
+          "'${parameter.location!.jsonValue}'.",
+        );
       }
     }
   }
 
-  void _path(String p, APIPath path) {
-    _parameters(p, path.parameters);
-    _each(p, path.operations, _operation);
-  }
-
-  void _parameters(String p, List<APIParameter> parameters) {
-    _eachIndexed(appendPointer(p, 'parameters'), parameters, _parameter);
-  }
-
   void _parameter(String p, APIParameter parameter) {
     _required(p, 'name', parameter.name);
-    _required(p, 'in', parameter.location);
+    _requiredEnum(p, 'in', parameter.location);
+    final hasSchema = parameter.schema != null;
+    final hasContent = parameter.content.isNotEmpty;
+    if (hasSchema == hasContent) {
+      _issue(p, "A parameter must have exactly one of 'schema' and 'content'.");
+    }
+    if (parameter.content.length > 1) {
+      _issue(
+        appendPointer(p, 'content'),
+        "A parameter's 'content' must have exactly one entry.",
+      );
+    }
     _content(p, parameter.content);
   }
 
   void _operation(String p, APIOperation operation) {
+    final id = operation.id;
+    if (id != null) {
+      final first = _operationIds[id];
+      if (first == null) {
+        _operationIds[id] = p;
+      } else {
+        _issue(
+          appendPointer(p, 'operationId'),
+          "Duplicate operationId '$id', also used at $first.",
+        );
+      }
+    }
     _parameters(p, operation.parameters);
     final body = operation.requestBody;
     if (body != null && !_isRef(body)) {
       _requestBody(appendPointer(p, 'requestBody'), body);
     }
-    if (operation.responses.isEmpty) {
-      _issue(
-        appendPointer(p, 'responses'),
-        'An operation must have at least one response.',
-      );
+    final rp = appendPointer(p, 'responses');
+    if (operation.responses.keys.every((key) => key.startsWith('x-'))) {
+      _issue(rp, 'An operation must have at least one response.');
     }
-    _each(appendPointer(p, 'responses'), operation.responses, _response);
+    for (final key in operation.responses.keys) {
+      if (!key.startsWith('x-') && !_responseKey.hasMatch(key)) {
+        _issue(
+          appendPointer(rp, key),
+          "Response key '$key' must be 'default', a status code or a range "
+          "like '2XX'.",
+        );
+      }
+    }
+    _each(rp, operation.responses, _response, skipExtensions: true);
     _each(appendPointer(p, 'callbacks'), operation.callbacks, _callback);
     _security(p, operation.security);
     _servers(p, operation.servers);
@@ -172,7 +310,7 @@ final class _Validator {
   }
 
   void _callback(String p, APICallback callback) =>
-      _each(p, callback.paths, _path);
+      _each(p, callback.paths, _path, skipExtensions: true);
 
   void _components(String p, APIComponents c) {
     void keys(String type, Map<String, APIObject> map) {
@@ -205,18 +343,36 @@ final class _Validator {
   void _scheme(String p, APISecurityScheme scheme) {
     switch (scheme.type) {
       case null:
-        _required(p, 'type', null);
+        _requiredEnum(p, 'type', null);
       case APISecuritySchemeType.apiKey:
         _required(p, 'name', scheme.name);
-        _required(p, 'in', scheme.location);
+        _requiredEnum(p, 'in', scheme.location);
+        if (scheme.location == APIParameterLocation.path) {
+          _issue(
+            appendPointer(p, 'in'),
+            "An apiKey must be in 'query', 'header' or 'cookie'.",
+          );
+        }
       case APISecuritySchemeType.http:
         _required(p, 'scheme', scheme.scheme);
       case APISecuritySchemeType.oauth2:
-        if (scheme.flows.isEmpty) {
-          _issue(appendPointer(p, 'flows'), "Missing required field 'flows'.");
+        final fp = appendPointer(p, 'flows');
+        if (scheme.flows.keys.every((name) => name.startsWith('x-'))) {
+          _issue(fp, "Missing required field 'flows'.");
         }
-        _each(appendPointer(p, 'flows'), scheme.flows, (p, flow) {
-          final name = p.substring(p.lastIndexOf('/') + 1);
+        scheme.flows.forEach((name, flow) {
+          if (name.startsWith('x-')) {
+            return;
+          }
+          final p = appendPointer(fp, name);
+          if (!_flowNames.contains(name)) {
+            _issue(
+              p,
+              "Unknown OAuth2 flow '$name'; expected one of "
+              '${_flowNames.join(', ')}.',
+            );
+            return;
+          }
           if (name == 'implicit' || name == 'authorizationCode') {
             _required(p, 'authorizationUrl', flow.authorizationURL);
           }
