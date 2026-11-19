@@ -311,6 +311,48 @@ void main() {
     });
   });
 
+  test("Callback given as \$ref resolves through components", () {
+    // Like other referenced objects, a referenced callback only carries its
+    // referenceURI; its paths come from `components.resolve`.
+    final doc = APIDocument.fromMap({
+      "openapi": "3.0.0",
+      "info": {"title": "x", "version": "1"},
+      "paths": {
+        "/subscribe": {
+          "post": {
+            "responses": {
+              "201": {"description": "ok"}
+            },
+            "callbacks": {
+              "onEvent": {r"$ref": "#/components/callbacks/Event"}
+            }
+          }
+        }
+      },
+      "components": {
+        "callbacks": {
+          "Event": {
+            "{\$request.body#/url}": {
+              "post": {
+                "responses": {
+                  "200": {"description": "ok"}
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    final ref =
+        doc.paths!["/subscribe"]!.operations["post"]!.callbacks!["onEvent"]!;
+    expect(ref.referenceURI, Uri(path: "/components/callbacks/Event"));
+    final resolved = doc.components!.resolve(ref)!;
+    expect(resolved.paths.keys, [r"{$request.body#/url}"]);
+    final encoded = doc.asMap();
+    expect(encoded["paths"]["/subscribe"]["post"]["callbacks"]["onEvent"],
+        {r"$ref": "#/components/callbacks/Event"});
+  });
+
   group("Phase 0 crash regressions", () {
     Map<String, dynamic> minimal([Map<String, dynamic> extra = const {}]) => {
           "openapi": "3.0.0",

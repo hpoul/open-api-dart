@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Fix crash decoding `components` without `schemas` (schemas is now an empty map).
+- Fix crash decoding `components` without `schemas` (schemas is now an empty map, so it encodes back as `schemas: {}`).
 - Fix decoding and encoding of callbacks (decoding crashed on any callback, encoding threw).
 - Fix crash decoding a server variable without `enum`.
 - Fix crash encoding an `openIdConnect` security scheme.
