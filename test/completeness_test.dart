@@ -566,6 +566,18 @@ void main() {
       expect(watch.elapsed, lessThan(const Duration(seconds: 2)));
     });
 
+    test('percent-encoded references into extensions', () {
+      final spec = _spec();
+      spec['x-my defs'] = {
+        'My Schema': {'type': 'string'},
+      };
+      spec['components']['schemas']['A'] = {
+        r'$ref': '#/x-my%20defs/My%20Schema',
+      };
+      final doc = APIDocument.fromMap(spec);
+      expect(doc.components!.schemas['A']!.type, APIType.string);
+    });
+
     test('x- extensions in paths, responses and callbacks are data', () {
       final spec = _spec();
       final path = spec['paths']['/pets/{id}'] as Map;

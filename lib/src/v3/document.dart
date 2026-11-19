@@ -411,13 +411,23 @@ final class _References {
   final Set<String> prefixes;
 
   void _add(String ref) {
-    if (!ref.startsWith('#/') || !targets.add(ref)) {
+    if (!ref.startsWith('#/')) {
       return;
     }
+    // As [appendPointer] writes them: percent-decoded, `~` escapes kept.
     var pointer = '#';
     for (final segment in ref.substring(2).split('/')) {
-      pointer = '$pointer/$segment';
+      pointer = '$pointer/${_decode(segment)}';
       prefixes.add(pointer);
+    }
+    targets.add(pointer);
+  }
+
+  static String _decode(String segment) {
+    try {
+      return Uri.decodeComponent(segment);
+    } on ArgumentError {
+      return segment;
     }
   }
 
