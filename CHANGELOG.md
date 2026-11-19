@@ -28,6 +28,13 @@
   It is a template (`{scheme}://{host}/v1`) and parsing it as a `Uri`
   mangled it. New `APIServerDescription.resolve()` substitutes the variables
   (given values, then defaults) and returns a `Uri`.
+- **Breaking:** `codable_forked` is no longer a dependency. Its decoding code
+  lives privately in `lib/src/codec`. `Coding`, `KeyedArchive`, `ListArchive`
+  and the `cast` library are no longer exported; `APIObject` no longer extends
+  `Coding` (it keeps `referenceURI`, `extensions`, `decode` and `encode`).
+  Use `APIDocument.fromMap` and `asMap()` to read and write documents.
+- Maps with non-`String`-typed keys (such as YAML maps) inside lists now
+  decode.
 
 ## 3.0.1
 

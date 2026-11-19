@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/v3.dart';
 import 'package:test/test.dart';
 

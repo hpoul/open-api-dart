@@ -1,3 +1,4 @@
+import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 
 /// An object representing a Server.

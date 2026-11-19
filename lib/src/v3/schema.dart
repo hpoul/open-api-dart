@@ -1,4 +1,4 @@
-import 'package:codable_forked/cast.dart' as cast;
+import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/types.dart';
 
@@ -251,11 +251,6 @@ class APISchemaObject extends APIObject {
   bool? _deprecated;
 
   @override
-  Map<String, cast.Cast<dynamic>> get castMap => {
-    'required': cast.List(cast.String),
-  };
-
-  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
@@ -274,7 +269,7 @@ class APISchemaObject extends APIObject {
     enumerated = object.decode('enum');
     minProperties = object.decode('minProperties');
     maxProperties = object.decode('maxProperties');
-    required = object.decode('required');
+    required = object.decodeList<String>('required');
 
     //
 
