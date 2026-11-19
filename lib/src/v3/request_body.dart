@@ -4,7 +4,7 @@ import 'package:open_api_forked/src/v3/media_type.dart';
 import 'package:open_api_forked/src/v3/schema.dart';
 
 /// Describes a single request body.
-class APIRequestBody extends APIObject {
+final class APIRequestBody extends APIObject {
   APIRequestBody.empty();
 
   APIRequestBody(this.content, {this.description, this.isRequired = false});

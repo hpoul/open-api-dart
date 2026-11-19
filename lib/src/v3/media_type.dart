@@ -4,7 +4,7 @@ import 'package:open_api_forked/src/v3/encoding.dart';
 import 'package:open_api_forked/src/v3/schema.dart';
 
 /// Each [APIMediaType] provides schema and examples for the media type identified by its key.
-class APIMediaType extends APIObject {
+final class APIMediaType extends APIObject {
   APIMediaType({this.schema, this.encoding});
   APIMediaType.empty();
 

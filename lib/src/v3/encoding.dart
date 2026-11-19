@@ -4,7 +4,7 @@ import 'package:open_api_forked/src/v3/header.dart';
 import 'package:open_api_forked/src/v3/parameter.dart';
 
 /// A single encoding definition applied to a single schema property.
-class APIEncoding extends APIObject {
+final class APIEncoding extends APIObject {
   APIEncoding({
     this.contentType,
     this.headers,

@@ -26,7 +26,7 @@ import 'package:open_api_forked/src/object.dart';
 ///         final archive = KeyedArchive.archive(person);
 ///         final json = json.encode(archive);
 ///
-class KeyedArchive extends Object
+final class KeyedArchive extends Object
     with MapMixin<String, dynamic>
     implements Referencable {
   /// Unarchives [data] into a [KeyedArchive] that can be used by [APIObject.decode] to deserialize objects.

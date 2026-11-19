@@ -10,7 +10,7 @@ import 'package:open_api_forked/src/v3/document.dart';
 import 'package:open_api_forked/src/v3/server.dart';
 
 /// Describes a single API operation on a path.
-class APIOperation extends APIObject {
+final class APIOperation extends APIObject {
   APIOperation.empty();
 
   APIOperation(

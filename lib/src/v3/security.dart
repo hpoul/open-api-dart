@@ -31,7 +31,7 @@ enum APISecuritySchemeType {
 }
 
 @Deprecated('Use APISecuritySchemeType.fromJson and .jsonValue.')
-class APISecuritySchemeTypeCodec {
+abstract final class APISecuritySchemeTypeCodec {
   static APISecuritySchemeType? decode(String? type) =>
       APISecuritySchemeType.fromJson(type);
 
@@ -41,7 +41,7 @@ class APISecuritySchemeTypeCodec {
 /// Defines a security scheme that can be used by the operations.
 ///
 /// Supported schemes are HTTP authentication, an API key (either as a header or as a query parameter), OAuth2's common flows (implicit, password, application and access code) as defined in RFC6749, and OpenID Connect Discovery.
-class APISecurityScheme extends APIObject {
+final class APISecurityScheme extends APIObject {
   APISecurityScheme();
 
   APISecurityScheme.empty();
@@ -215,7 +215,7 @@ class APISecurityScheme extends APIObject {
 }
 
 /// Allows configuration of the supported OAuth Flows.
-class APISecuritySchemeOAuth2Flow extends APIObject {
+final class APISecuritySchemeOAuth2Flow extends APIObject {
   APISecuritySchemeOAuth2Flow.empty();
 
   APISecuritySchemeOAuth2Flow.code(
@@ -297,7 +297,7 @@ class APISecuritySchemeOAuth2Flow extends APIObject {
 /// [APISecurityRequirement] that contain multiple schemes require that all schemes MUST be satisfied for a request to be authorized. This enables support for scenarios where multiple query parameters or HTTP headers are required to convey security information.
 
 /// When a list of [APISecurityRequirement] is defined on the [APIDocument] or [APIOperation], only one of [APISecurityRequirement] in the list needs to be satisfied to authorize the request.
-class APISecurityRequirement extends APIObject {
+final class APISecurityRequirement extends APIObject {
   APISecurityRequirement.empty();
 
   APISecurityRequirement(this.requirements);

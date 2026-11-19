@@ -4,7 +4,7 @@ import 'package:open_api_forked/src/object.dart';
 /// The object provides metadata about the API.
 ///
 /// The metadata MAY be used by the clients if needed, and MAY be presented in editing or documentation generation tools for convenience.
-class APIInfo extends APIObject {
+final class APIInfo extends APIObject {
   APIInfo.empty();
 
   /// Creates empty metadata for specification.
@@ -78,7 +78,7 @@ class APIInfo extends APIObject {
 }
 
 /// Contact information for the exposed API.
-class APIContact extends APIObject {
+final class APIContact extends APIObject {
   APIContact({this.name, this.url, this.email});
   APIContact.empty();
 
@@ -116,7 +116,7 @@ class APIContact extends APIObject {
 }
 
 /// License information for the exposed API.
-class APILicense extends APIObject {
+final class APILicense extends APIObject {
   APILicense.empty();
   APILicense(this.name, {this.url});
 
@@ -154,7 +154,7 @@ class APILicense extends APIObject {
 /// Adds metadata to a single tag that is used by the [APIOperation].
 ///
 /// It is not mandatory to have a [APITag] per tag defined in the [APIOperation] instances.
-class APITag extends APIObject {
+final class APITag extends APIObject {
   APITag.empty();
 
   APITag(this.name, {this.description});

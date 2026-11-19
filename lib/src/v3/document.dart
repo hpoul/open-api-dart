@@ -7,7 +7,7 @@ import 'package:open_api_forked/src/v3/security.dart';
 import 'package:open_api_forked/src/v3/server.dart';
 
 /// This is the root document object of the OpenAPI document.
-class APIDocument extends APIObject {
+final class APIDocument extends APIObject {
   /// Creates an empty specification.
   APIDocument();
 

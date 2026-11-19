@@ -23,7 +23,7 @@ enum APIType {
 }
 
 @Deprecated('Use APIType.fromJson and APIType.jsonValue.')
-class APITypeCodec {
+abstract final class APITypeCodec {
   static APIType? decode(String? type) => APIType.fromJson(type);
 
   static String? encode(APIType? type) => type?.jsonValue;

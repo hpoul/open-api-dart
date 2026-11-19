@@ -14,7 +14,7 @@ enum APISchemaAdditionalPropertyPolicy {
 }
 
 /// Represents a schema object in the OpenAPI specification.
-class APISchemaObject extends APIObject {
+final class APISchemaObject extends APIObject {
   APISchemaObject();
   APISchemaObject.empty();
 

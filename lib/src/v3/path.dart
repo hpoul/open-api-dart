@@ -6,7 +6,7 @@ import 'package:open_api_forked/src/v3/parameter.dart';
 /// Describes the operations available on a single path.
 ///
 /// An [APIPath] MAY be empty, due to ACL constraints. The path itself is still exposed to the documentation viewer but they will not know which operations and parameters are available.
-class APIPath extends APIObject {
+final class APIPath extends APIObject {
   APIPath.empty() : operations = {};
   APIPath({
     this.summary,
