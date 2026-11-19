@@ -142,7 +142,13 @@ final class APIDocument extends APIObject {
   /// defined.
   List<OpenApiFormatException> validate() => validateDocument(this);
 
-  /// Every operation in [paths], in order, with its path and method.
+  /// Every operation in [paths], with its path and method.
+  ///
+  /// Paths come in map order (document order when decoded); within a path,
+  /// methods come in the fixed order get, put, post, delete, options, head,
+  /// patch, trace. `x-` extension keys in [paths] are skipped. This is a
+  /// lazy iterable: each iteration, including `.length`, walks the paths
+  /// again.
   ///
   /// ```dart
   /// for (final (:path, :method, :operation, pathItem: _) in doc.operations) {
@@ -154,6 +160,9 @@ final class APIDocument extends APIObject {
   >
   get operations sync* {
     for (final MapEntry(key: path, value: pathItem) in paths.entries) {
+      if (path.startsWith('x-')) {
+        continue;
+      }
       for (final MapEntry(key: method, value: operation)
           in pathItem.operations.entries) {
         yield (

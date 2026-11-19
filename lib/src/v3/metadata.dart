@@ -88,6 +88,9 @@ final class APIContact extends APIObject {
   APIContact({this.name, this.url, this.email});
   APIContact.empty();
 
+  @override
+  Map<String, Object?> get toStringFields => {'name': name};
+
   /// The identifying name of the contact person/organization.
   String? name;
 
@@ -125,6 +128,9 @@ final class APIContact extends APIObject {
 final class APILicense extends APIObject {
   APILicense.empty();
   APILicense(this.name, {this.url});
+
+  @override
+  Map<String, Object?> get toStringFields => {'name': name};
 
   /// The license name used for the API.
   ///

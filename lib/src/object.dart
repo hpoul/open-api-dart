@@ -50,27 +50,56 @@ abstract base class APIObject {
   @protected
   Map<String, Object?> get toStringFields => const {};
 
-  /// A short description for debugging, such as
+  /// How deeply [toString] calls are nested, so that nested objects (and
+  /// cycles built in code, such as `schema.items = schema`) stop at
+  /// [_maxToStringDepth].
+  static int _toStringDepth = 0;
+  static const _maxToStringDepth = 3;
+
+  /// A short, single-line description for debugging, such as
   /// `APIParameter(name: id, in: path)`, or `APISchemaObject($ref:
   /// #/components/schemas/Pet)` for a reference.
+  ///
+  /// Maps show their keys (`{200, 404}`), lists their elements (`[a, b]`),
+  /// strings only their first line, shortened. Objects nested more than a
+  /// few levels deep print as `Type(…)`. Types with nothing to show print
+  /// as `Type()`.
   @override
   String toString() {
     final ref = referenceURI;
     if (ref != null) {
       return '$runtimeType(\$ref: #${ref.path})';
     }
-    final fields = [
-      for (final MapEntry(:key, :value) in toStringFields.entries)
-        if (value != null &&
-            !(value is Iterable && value.isEmpty) &&
-            !(value is Map && value.isEmpty))
-          '$key: ${switch (value) {
-            Map() => '[${value.keys.join(', ')}]',
-            Iterable() => '[${value.join(', ')}]',
-            Enum(:final name) => name,
-            _ => value,
-          }}',
-    ];
-    return '$runtimeType(${fields.join(', ')})';
+    if (_toStringDepth >= _maxToStringDepth) {
+      return '$runtimeType(…)';
+    }
+    _toStringDepth++;
+    try {
+      final fields = [
+        for (final MapEntry(:key, :value) in toStringFields.entries)
+          if (value != null &&
+              !(value is Iterable && value.isEmpty) &&
+              !(value is Map && value.isEmpty))
+            '$key: ${switch (value) {
+              Map() => '{${value.keys.map(_short).join(', ')}}',
+              Iterable() => '[${value.map(_short).join(', ')}]',
+              Enum(:final name) => name,
+              _ => _short(value),
+            }}',
+      ];
+      return '$runtimeType(${fields.join(', ')})';
+    } finally {
+      _toStringDepth--;
+    }
+  }
+
+  static String _short(Object? value) {
+    if (value is! String) {
+      return '$value';
+    }
+    final line = value.split('\n').first.trim();
+    return line.length > 40 || line.length < value.trim().length
+        ? '${line.length > 40 ? line.substring(0, 40) : line}…'
+        : line;
   }
 }

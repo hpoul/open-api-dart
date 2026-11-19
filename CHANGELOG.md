@@ -110,11 +110,14 @@
   `freeForm` for `any: true`), so a decoded or `.map()`-built `restricted`
   always comes with an `additionalPropertySchema`.
 - New `APIDocument.operations` yields every operation as a record
-  `(path, pathItem, method, operation)`, replacing the nested loop over
-  `paths` and `operations`.
-- Model objects have a short `toString()` for debugging, such as
-  `APIParameter(name: id, in: path)` or
-  `APISchemaObject($ref: #/components/schemas/Pet)`.
+  `(path, pathItem, method, operation)`, so callers no longer need to nest
+  loops over `paths` and each path's `operations`. Methods come in a fixed
+  order (get, put, post, ...) and `x-` keys in `paths` are skipped.
+- Model objects have a short, single-line `toString()` for debugging, such
+  as `APIParameter(name: id, in: path)` or
+  `APISchemaObject($ref: #/components/schemas/Pet)`, instead of
+  `Instance of '...'`. Some types print only `TypeName()`; nesting is cut
+  off after a few levels, so cycles built in code don't overflow.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 

@@ -319,6 +319,9 @@ final class APISecurityRequirement extends APIObject {
   Map<String, List<String>> requirements = {};
 
   @override
+  Map<String, Object?> get toStringFields => {'requirements': requirements};
+
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 

@@ -64,6 +64,7 @@ final class APIParameter extends APIObject {
   Map<String, Object?> get toStringFields => {
     'name': name,
     'in': location?.jsonValue,
+    'required': isRequired ? true : null,
   };
 
   APIParameter(

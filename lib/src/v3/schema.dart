@@ -22,7 +22,10 @@ final class APISchemaObject extends APIObject {
   Map<String, Object?> get toStringFields => {
     'type': type?.jsonValue,
     'format': format,
+    'nullable': (isNullable ?? false) ? true : null,
+    'enum': enumerated?.length,
     'properties': properties,
+    'additionalProperties': additionalPropertyPolicy,
     'items': items,
     'allOf': allOf,
     'oneOf': oneOf,
