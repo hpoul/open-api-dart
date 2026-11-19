@@ -1,4 +1,4 @@
-library open_api_v3;
+library;
 
 export 'package:open_api_forked/src/v3/callback.dart';
 export 'package:open_api_forked/src/v3/components.dart';

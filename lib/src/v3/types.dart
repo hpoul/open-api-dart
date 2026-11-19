@@ -3,17 +3,17 @@ enum APIType { string, number, integer, boolean, array, object }
 class APITypeCodec {
   static APIType? decode(String? type) {
     switch (type) {
-      case "string":
+      case 'string':
         return APIType.string;
-      case "number":
+      case 'number':
         return APIType.number;
-      case "integer":
+      case 'integer':
         return APIType.integer;
-      case "boolean":
+      case 'boolean':
         return APIType.boolean;
-      case "array":
+      case 'array':
         return APIType.array;
-      case "object":
+      case 'object':
         return APIType.object;
       default:
         return null;
@@ -23,17 +23,17 @@ class APITypeCodec {
   static String? encode(APIType? type) {
     switch (type) {
       case APIType.string:
-        return "string";
+        return 'string';
       case APIType.number:
-        return "number";
+        return 'number';
       case APIType.integer:
-        return "integer";
+        return 'integer';
       case APIType.boolean:
-        return "boolean";
+        return 'boolean';
       case APIType.array:
-        return "array";
+        return 'array';
       case APIType.object:
-        return "object";
+        return 'object';
       default:
         return null;
     }

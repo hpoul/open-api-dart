@@ -7,9 +7,12 @@ import 'package:open_api_forked/src/v3/schema.dart';
 class APIResponse extends APIObject {
   APIResponse.empty();
   APIResponse(this.description, {this.content, this.headers});
-  APIResponse.schema(this.description, APISchemaObject schema,
-      {Iterable<String> contentTypes: const ["application/json"],
-      this.headers}) {
+  APIResponse.schema(
+    this.description,
+    APISchemaObject schema, {
+    Iterable<String> contentTypes = const ['application/json'],
+    this.headers,
+  }) {
     content = contentTypes.fold<Map<String, APIMediaType?>>({}, (prev, elem) {
       prev[elem] = APIMediaType(schema: schema);
       return prev;
@@ -71,24 +74,27 @@ class APIResponse extends APIObject {
     }
   }
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    description = object.decode("description");
-    content = object.decodeObjectMap("content", () => APIMediaType());
-    headers = object.decodeObjectMap("headers", () => APIHeader());
+    description = object.decode('description');
+    content = object.decodeObjectMap('content', () => APIMediaType());
+    headers = object.decodeObjectMap('headers', () => APIHeader());
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
     if (description == null) {
       throw ArgumentError(
-          "APIResponse must have non-null values for: 'description'.");
+        "APIResponse must have non-null values for: 'description'.",
+      );
     }
 
-    object.encode("description", description);
-    object.encodeObjectMap("headers", headers);
-    object.encodeObjectMap("content", content);
+    object.encode('description', description);
+    object.encodeObjectMap('headers', headers);
+    object.encodeObjectMap('content', content);
   }
 }

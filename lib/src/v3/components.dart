@@ -47,83 +47,94 @@ class APIComponents extends APIObject {
     final segments = uri.pathSegments;
     if (segments.length != 3) {
       throw ArgumentError(
-          "Invalid reference URI. Must be a path URI of the form: '/components/<type>/<name>'");
+        "Invalid reference URI. Must be a path URI of the form: '/components/<type>/<name>'",
+      );
     }
 
-    if (segments.first != "components") {
+    if (segments.first != 'components') {
       throw ArgumentError(
-          "Invalid reference URI: does not begin with /components/");
+        'Invalid reference URI: does not begin with /components/',
+      );
     }
 
-    var namedMap = null;
+    Map<String, APIObject?>? namedMap;
     switch (segments[1]) {
-      case "schemas":
+      case 'schemas':
         namedMap = schemas;
         break;
-      case "responses":
+      case 'responses':
         namedMap = responses;
         break;
-      case "parameters":
+      case 'parameters':
         namedMap = parameters;
         break;
-      case "requestBodies":
+      case 'requestBodies':
         namedMap = requestBodies;
         break;
-      case "headers":
+      case 'headers':
         namedMap = headers;
         break;
-      case "securitySchemes":
+      case 'securitySchemes':
         namedMap = securitySchemes;
         break;
-      case "callbacks":
+      case 'callbacks':
         namedMap = callbacks;
         break;
       default:
         throw ArgumentError(
-            "Invalid reference URI: component type '${segments[1]}' does not exist.");
+          "Invalid reference URI: component type '${segments[1]}' does not exist.",
+        );
     }
 
-    return namedMap[segments.last];
+    return namedMap?[segments.last];
   }
 
   T? resolve<T extends APIObject>(T refObject) {
     final referenceURI = refObject.referenceURI;
     if (referenceURI == null) {
-      throw ArgumentError("APIObject is not a reference to a component.");
+      throw ArgumentError('APIObject is not a reference to a component.');
     }
 
     return resolveUri(referenceURI) as T?;
   }
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    schemas = object.decodeObjectMap("schemas", () => APISchemaObject()) ?? {};
-    responses = object.decodeObjectMap("responses", () => APIResponse.empty());
-    parameters =
-        object.decodeObjectMap("parameters", () => APIParameter.empty());
-//    examples = object.decodeObjectMap("examples", () => APIExample());
-    requestBodies =
-        object.decodeObjectMap("requestBodies", () => APIRequestBody.empty());
-    headers = object.decodeObjectMap("headers", () => APIHeader());
+    schemas = object.decodeObjectMap('schemas', () => APISchemaObject()) ?? {};
+    responses = object.decodeObjectMap('responses', () => APIResponse.empty());
+    parameters = object.decodeObjectMap(
+      'parameters',
+      () => APIParameter.empty(),
+    );
+    //    examples = object.decodeObjectMap("examples", () => APIExample());
+    requestBodies = object.decodeObjectMap(
+      'requestBodies',
+      () => APIRequestBody.empty(),
+    );
+    headers = object.decodeObjectMap('headers', () => APIHeader());
 
-    securitySchemes =
-        object.decodeObjectMap("securitySchemes", () => APISecurityScheme());
-//    links = object.decodeObjectMap("links", () => APILink());
-    callbacks = object.decodeObjectMap("callbacks", () => APICallback());
+    securitySchemes = object.decodeObjectMap(
+      'securitySchemes',
+      () => APISecurityScheme(),
+    );
+    //    links = object.decodeObjectMap("links", () => APILink());
+    callbacks = object.decodeObjectMap('callbacks', () => APICallback());
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
-    object.encodeObjectMap("schemas", schemas);
-    object.encodeObjectMap("responses", responses);
-    object.encodeObjectMap("parameters", parameters);
-//    object.encodeObjectMap("examples", examples);
-    object.encodeObjectMap("requestBodies", requestBodies);
-    object.encodeObjectMap("headers", headers);
-    object.encodeObjectMap("securitySchemes", securitySchemes);
-//    object.encodeObjectMap("links", links);
-    object.encodeObjectMap("callbacks", callbacks);
+    object.encodeObjectMap('schemas', schemas);
+    object.encodeObjectMap('responses', responses);
+    object.encodeObjectMap('parameters', parameters);
+    //    object.encodeObjectMap("examples", examples);
+    object.encodeObjectMap('requestBodies', requestBodies);
+    object.encodeObjectMap('headers', headers);
+    object.encodeObjectMap('securitySchemes', securitySchemes);
+    //    object.encodeObjectMap("links", links);
+    object.encodeObjectMap('callbacks', callbacks);
   }
 }

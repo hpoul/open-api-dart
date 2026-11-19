@@ -4,26 +4,20 @@ import 'package:open_api_forked/src/v3/document.dart';
 import 'package:open_api_forked/src/v3/operation.dart';
 import 'package:open_api_forked/src/v3/parameter.dart';
 
-enum APISecuritySchemeType {
-  apiKey,
-  http,
-  oauth2,
-  openID,
-  openIdConnect,
-}
+enum APISecuritySchemeType { apiKey, http, oauth2, openID, openIdConnect }
 
 class APISecuritySchemeTypeCodec {
   static APISecuritySchemeType? decode(String? type) {
     switch (type) {
-      case "apiKey":
+      case 'apiKey':
         return APISecuritySchemeType.apiKey;
-      case "http":
+      case 'http':
         return APISecuritySchemeType.http;
-      case "oauth2":
+      case 'oauth2':
         return APISecuritySchemeType.oauth2;
-      case "openID":
+      case 'openID':
         return APISecuritySchemeType.openID;
-      case "openIdConnect":
+      case 'openIdConnect':
         return APISecuritySchemeType.openIdConnect;
       default:
         return null;
@@ -33,15 +27,15 @@ class APISecuritySchemeTypeCodec {
   static String? encode(APISecuritySchemeType? type) {
     switch (type) {
       case APISecuritySchemeType.apiKey:
-        return "apiKey";
+        return 'apiKey';
       case APISecuritySchemeType.http:
-        return "http";
+        return 'http';
       case APISecuritySchemeType.oauth2:
-        return "oauth2";
+        return 'oauth2';
       case APISecuritySchemeType.openID:
-        return "openID";
+        return 'openID';
       case APISecuritySchemeType.openIdConnect:
-        return "openIdConnect";
+        return 'openIdConnect';
       default:
         return null;
     }
@@ -59,12 +53,12 @@ class APISecurityScheme extends APIObject {
   APISecurityScheme.http(this.scheme) : type = APISecuritySchemeType.http;
 
   APISecurityScheme.apiKey(this.name, this.location)
-      : type = APISecuritySchemeType.apiKey;
+    : type = APISecuritySchemeType.apiKey;
 
   APISecurityScheme.oauth2(this.flows) : type = APISecuritySchemeType.oauth2;
 
   APISecurityScheme.openID(this.connectURL)
-      : type = APISecuritySchemeType.openID;
+    : type = APISecuritySchemeType.openID;
 
   /// The type of the security scheme.
   ///
@@ -113,85 +107,94 @@ class APISecurityScheme extends APIObject {
   /// For openID only. REQUIRED if so.
   Uri? connectURL;
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    type = APISecuritySchemeTypeCodec.decode(object.decode("type"));
-    description = object.decode("description");
+    type = APISecuritySchemeTypeCodec.decode(object.decode('type'));
+    description = object.decode('description');
 
     switch (type) {
       case APISecuritySchemeType.apiKey:
         {
-          name = object.decode("name");
-          location = APIParameterLocationCodec.decode(object.decode("in"));
+          name = object.decode('name');
+          location = APIParameterLocationCodec.decode(object.decode('in'));
         }
         break;
       case APISecuritySchemeType.oauth2:
         {
           flows = object.decodeObjectMap(
-              "flows", () => APISecuritySchemeOAuth2Flow.empty());
+            'flows',
+            () => APISecuritySchemeOAuth2Flow.empty(),
+          );
         }
         break;
       case APISecuritySchemeType.http:
         {
-          scheme = object.decode("scheme");
-          format = object.decode("bearerFormat");
+          scheme = object.decode('scheme');
+          format = object.decode('bearerFormat');
         }
         break;
       case APISecuritySchemeType.openID:
       case APISecuritySchemeType.openIdConnect:
         {
-          connectURL = object.decode("openIdConnectUrl");
+          connectURL = object.decode('openIdConnectUrl');
         }
         break;
       default:
         throw ArgumentError(
-            "APISecurityScheme must have non-null values for: 'type' ${object.decode("type")}.");
+          "APISecurityScheme must have non-null values for: 'type' ${object.decode<Object?>("type")}.",
+        );
     }
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
     if (type == null) {
       throw ArgumentError(
-          "APISecurityScheme must have non-null values for: 'type'.");
+        "APISecurityScheme must have non-null values for: 'type'.",
+      );
     }
 
-    object.encode("type", APISecuritySchemeTypeCodec.encode(type));
-    object.encode("description", description);
+    object.encode('type', APISecuritySchemeTypeCodec.encode(type));
+    object.encode('description', description);
 
     switch (type) {
       case APISecuritySchemeType.apiKey:
         {
           if (name == null || location == null) {
             throw ArgumentError(
-                "APISecurityScheme with 'apiKey' type must have non-null values for: 'name', 'location'.");
+              "APISecurityScheme with 'apiKey' type must have non-null values for: 'name', 'location'.",
+            );
           }
 
-          object.encode("name", name);
-          object.encode("in", APIParameterLocationCodec.encode(location));
+          object.encode('name', name);
+          object.encode('in', APIParameterLocationCodec.encode(location));
         }
         break;
       case APISecuritySchemeType.oauth2:
         {
           if (flows == null) {
             throw ArgumentError(
-                "APISecurityScheme with 'oauth2' type must have non-null values for: 'flows'.");
+              "APISecurityScheme with 'oauth2' type must have non-null values for: 'flows'.",
+            );
           }
 
-          object.encodeObjectMap("flows", flows);
+          object.encodeObjectMap('flows', flows);
         }
         break;
       case APISecuritySchemeType.http:
         {
           if (scheme == null) {
             throw ArgumentError(
-                "APISecurityScheme with 'http' type must have non-null values for: 'scheme'.");
+              "APISecurityScheme with 'http' type must have non-null values for: 'scheme'.",
+            );
           }
 
-          object.encode("scheme", scheme);
-          object.encode("bearerFormat", format);
+          object.encode('scheme', scheme);
+          object.encode('bearerFormat', format);
         }
         break;
       case APISecuritySchemeType.openID:
@@ -199,14 +202,16 @@ class APISecurityScheme extends APIObject {
         {
           if (connectURL == null) {
             throw ArgumentError(
-                "APISecurityScheme with '${APISecuritySchemeTypeCodec.encode(type)}' type must have non-null values for: 'connectURL'.");
+              "APISecurityScheme with '${APISecuritySchemeTypeCodec.encode(type)}' type must have non-null values for: 'connectURL'.",
+            );
           }
-          object.encode("openIdConnectUrl", connectURL);
+          object.encode('openIdConnectUrl', connectURL);
         }
         break;
       default:
         throw ArgumentError(
-            "APISecurityScheme must have non-null values for: 'type'.");
+          "APISecurityScheme must have non-null values for: 'type'.",
+        );
     }
   }
 }
@@ -216,16 +221,29 @@ class APISecuritySchemeOAuth2Flow extends APIObject {
   APISecuritySchemeOAuth2Flow.empty();
 
   APISecuritySchemeOAuth2Flow.code(
-      this.authorizationURL, this.tokenURL, this.refreshURL, this.scopes);
+    this.authorizationURL,
+    this.tokenURL,
+    this.refreshURL,
+    this.scopes,
+  );
 
   APISecuritySchemeOAuth2Flow.implicit(
-      this.authorizationURL, this.refreshURL, this.scopes);
+    this.authorizationURL,
+    this.refreshURL,
+    this.scopes,
+  );
 
   APISecuritySchemeOAuth2Flow.password(
-      this.tokenURL, this.refreshURL, this.scopes);
+    this.tokenURL,
+    this.refreshURL,
+    this.scopes,
+  );
 
   APISecuritySchemeOAuth2Flow.client(
-      this.tokenURL, this.refreshURL, this.scopes);
+    this.tokenURL,
+    this.refreshURL,
+    this.scopes,
+  );
 
   /// The authorization URL to be used for this flow.
   ///
@@ -247,27 +265,30 @@ class APISecuritySchemeOAuth2Flow extends APIObject {
   /// REQUIRED. A map between the scope name and a short description for it.
   Map<String, String>? scopes;
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
-    object.encode("authorizationUrl", authorizationURL);
-    object.encode("tokenUrl", tokenURL);
-    object.encode("refreshUrl", refreshURL);
-    object.encode("scopes", scopes);
+    object.encode('authorizationUrl', authorizationURL);
+    object.encode('tokenUrl', tokenURL);
+    object.encode('refreshUrl', refreshURL);
+    object.encode('scopes', scopes);
   }
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    authorizationURL = object.decode("authorizationUrl");
+    authorizationURL = object.decode('authorizationUrl');
 
-    tokenURL = object.decode("tokenUrl");
-    refreshURL = object.decode("refreshUrl");
+    tokenURL = object.decode('tokenUrl');
+    refreshURL = object.decode('refreshUrl');
 
     // `scopes` is required by the spec, but often left out when empty.
-    final Map? decodedScopes = object.decode("scopes");
-    scopes =
-        decodedScopes == null ? {} : Map<String, String>.from(decodedScopes);
+    final decodedScopes = object.decode<Map<String, Object?>>('scopes');
+    scopes = decodedScopes == null
+        ? {}
+        : Map<String, String>.from(decodedScopes);
   }
 }
 
@@ -288,6 +309,7 @@ class APISecurityRequirement extends APIObject {
   /// If the security scheme is of type [APISecuritySchemeType.oauth2] or [APISecuritySchemeType.openID], then the value is a list of scope names required for the execution. For other security scheme types, the array MUST be empty.
   Map<String, List<String>> requirements = {};
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
@@ -296,12 +318,13 @@ class APISecurityRequirement extends APIObject {
     });
   }
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    object.keys.forEach((key) {
-      final req = List<String>.from(object.decode(key));
+    for (var key in object.keys) {
+      final req = List<String>.from(object.decode<List<Object?>>(key)!);
       requirements[key] = req;
-    });
+    }
   }
 }

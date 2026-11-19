@@ -7,8 +7,14 @@ class APIInfo extends APIObject {
   APIInfo.empty();
 
   /// Creates empty metadata for specification.
-  APIInfo(this.title, this.version,
-      {this.description, this.termsOfServiceURL, this.license, this.contact});
+  APIInfo(
+    this.title,
+    this.version, {
+    this.description,
+    this.termsOfServiceURL,
+    this.license,
+    this.contact,
+  });
 
   /// The title of the application.
   ///
@@ -36,33 +42,37 @@ class APIInfo extends APIObject {
   /// The license information for the exposed API.
   APILicense? license;
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    title = object.decode("title");
-    description = object.decode("description");
-    termsOfServiceURL = object.decode("termsOfService") != null
-        ? Uri.tryParse(object.decode("termsOfService"))
+    title = object.decode('title');
+    description = object.decode('description');
+    final termsOfService = object.decode<String>('termsOfService');
+    termsOfServiceURL = termsOfService != null
+        ? Uri.tryParse(termsOfService)
         : null;
-    contact = object.decodeObject("contact", () => APIContact());
-    license = object.decodeObject("license", () => APILicense.empty());
-    version = object.decode("version");
+    contact = object.decodeObject('contact', () => APIContact());
+    license = object.decodeObject('license', () => APILicense.empty());
+    version = object.decode('version');
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
     if (title == null || version == null) {
       throw ArgumentError(
-          "APIInfo must have non-null values for: 'title', 'version'.");
+        "APIInfo must have non-null values for: 'title', 'version'.",
+      );
     }
 
-    object.encode("title", title);
-    object.encode("description", description);
-    object.encode("version", version);
-    object.encode("termsOfService", termsOfServiceURL);
-    object.encodeObject("contact", contact);
-    object.encodeObject("license", license);
+    object.encode('title', title);
+    object.encode('description', description);
+    object.encode('version', version);
+    object.encode('termsOfService', termsOfServiceURL);
+    object.encodeObject('contact', contact);
+    object.encodeObject('license', license);
   }
 }
 
@@ -84,22 +94,23 @@ class APIContact extends APIObject {
   /// MUST be in the format of an email address.
   String? email;
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    name = object.decode("name");
-    url = object.decode("url") != null
-        ? Uri.tryParse(object.decode("url"))
-        : null;
-    email = object.decode("email");
+    name = object.decode('name');
+    final url = object.decode<String>('url');
+    this.url = url != null ? Uri.tryParse(url) : null;
+    email = object.decode('email');
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
-    object.encode("name", name);
-    object.encode("url", url);
-    object.encode("email", email);
+    object.encode('name', name);
+    object.encode('url', url);
+    object.encode('email', email);
   }
 }
 
@@ -118,13 +129,15 @@ class APILicense extends APIObject {
   /// MUST be in the format of a URL.
   Uri? url;
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    name = object.decode("name");
-    url = object.decode("url");
+    name = object.decode('name');
+    url = object.decode('url');
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
@@ -132,8 +145,8 @@ class APILicense extends APIObject {
       throw ArgumentError("APILicense must have non-null values for: 'name'.");
     }
 
-    object.encode("name", name);
-    object.encode("url", url);
+    object.encode('name', name);
+    object.encode('url', url);
   }
 }
 
@@ -155,20 +168,22 @@ class APITag extends APIObject {
   /// CommonMark syntax MAY be used for rich text representation.
   String? description;
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    name = object.decode("name");
-    description = object.decode("description");
+    name = object.decode('name');
+    description = object.decode('description');
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
     if (name == null) {
       throw ArgumentError("APITag must have non-null values for: 'name'.");
     }
-    object.encode("name", name);
-    object.encode("description", description);
+    object.encode('name', name);
+    object.encode('description', description);
   }
 }

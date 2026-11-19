@@ -37,7 +37,8 @@ class APIPath extends APIObject {
   /// Returns true if [parameters] contains path parameters with names that match [parameterNames] and
   /// both lists have the same number of elements.
   bool containsPathParameters(List<String> parameterNames) {
-    final pathParams = parameters
+    final pathParams =
+        parameters
             ?.where((p) => p?.location == APIParameterLocation.path)
             .map((p) => p?.name)
             .toList() ??
@@ -51,38 +52,42 @@ class APIPath extends APIObject {
 
   // todo (joeconwaystk): alternative servers not yet implemented
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    summary = object.decode("summary");
-    description = object.decode("description");
-    parameters = object.decodeObjects("parameters", () => APIParameter.empty());
+    summary = object.decode('summary');
+    description = object.decode('description');
+    parameters = object.decodeObjects('parameters', () => APIParameter.empty());
 
     final methodNames = [
-      "get",
-      "put",
-      "post",
-      "delete",
-      "options",
-      "head",
-      "patch",
-      "trace"
+      'get',
+      'put',
+      'post',
+      'delete',
+      'options',
+      'head',
+      'patch',
+      'trace',
     ];
-    methodNames.forEach((methodName) {
+    for (var methodName in methodNames) {
       if (!object.containsKey(methodName)) {
-        return;
+        continue;
       }
-      operations[methodName] =
-          object.decodeObject(methodName, () => APIOperation.empty());
-    });
+      operations[methodName] = object.decodeObject(
+        methodName,
+        () => APIOperation.empty(),
+      );
+    }
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
-    object.encode("summary", summary);
-    object.encode("description", description);
-    object.encodeObjects("parameters", parameters);
+    object.encode('summary', summary);
+    object.encode('description', description);
+    object.encodeObjects('parameters', parameters);
 
     operations.forEach((opName, op) {
       object.encodeObject(opName.toLowerCase(), op);

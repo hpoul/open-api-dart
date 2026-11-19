@@ -20,36 +20,43 @@ class APIServerDescription extends APIObject {
   /// The value is used for substitution in the server's URL template.
   Map<String, APIServerVariable?>? variables;
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    url = object.decode("url") != null
-        ? Uri.tryParse(object.decode("url"))
-        : null;
-    description = object.decode("description");
-    variables =
-        object.decodeObjectMap("variables", () => APIServerVariable.empty());
+    final url = object.decode<String>('url');
+    this.url = url != null ? Uri.tryParse(url) : null;
+    description = object.decode('description');
+    variables = object.decodeObjectMap(
+      'variables',
+      () => APIServerVariable.empty(),
+    );
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
     if (url == null) {
       throw ArgumentError(
-          "APIServerDescription must have non-null values for: 'url'.");
+        "APIServerDescription must have non-null values for: 'url'.",
+      );
     }
 
-    object.encode("url", url);
-    object.encode("description", description);
-    object.encodeObjectMap("variables", variables);
+    object.encode('url', url);
+    object.encode('description', description);
+    object.encodeObjectMap('variables', variables);
   }
 }
 
 /// An object representing a Server Variable for server URL template substitution.
 class APIServerVariable extends APIObject {
   APIServerVariable.empty();
-  APIServerVariable(this.defaultValue,
-      {this.availableValues, this.description});
+  APIServerVariable(
+    this.defaultValue, {
+    this.availableValues,
+    this.description,
+  });
 
   /// An enumeration of string values to be used if the substitution options are from a limited set.
   List<String>? availableValues;
@@ -64,25 +71,28 @@ class APIServerVariable extends APIObject {
   /// CommonMark syntax MAY be used for rich text representation.
   String? description;
 
+  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    final List? enumValues = object.decode("enum");
+    final enumValues = object.decode<List<Object?>>('enum');
     availableValues = enumValues == null ? null : List<String>.from(enumValues);
-    defaultValue = object.decode("default");
-    description = object.decode("description");
+    defaultValue = object.decode('default');
+    description = object.decode('description');
   }
 
+  @override
   void encode(KeyedArchive object) {
     super.encode(object);
 
     if (defaultValue == null) {
       throw ArgumentError(
-          "APIServerVariable must have non-null values for: 'defaultValue'.");
+        "APIServerVariable must have non-null values for: 'defaultValue'.",
+      );
     }
 
-    object.encode("enum", availableValues);
-    object.encode("default", defaultValue);
-    object.encode("description", description);
+    object.encode('enum', availableValues);
+    object.encode('default', defaultValue);
+    object.encode('description', description);
   }
 }
