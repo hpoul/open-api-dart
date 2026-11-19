@@ -45,6 +45,12 @@ final class APIHeader extends APIObject {
   /// default for `simple`, `false`.
   bool? explode;
 
+  /// [style], or its default for headers, `simple`.
+  String get effectiveStyle => style ?? 'simple';
+
+  /// [explode], or its default: true when [effectiveStyle] is `form`.
+  bool get effectiveExplode => explode ?? effectiveStyle == 'form';
+
   /// An example of the header's value, kept as decoded.
   Object? example;
 

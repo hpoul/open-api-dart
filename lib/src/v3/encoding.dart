@@ -28,17 +28,36 @@ final class APIEncoding extends APIObject {
   /// Determines whether the parameter value SHOULD allow reserved characters, as defined by RFC3986 :/?#[]@!$&'()*+,;= to be included without percent-encoding.
   ///
   /// The default value is false. This property SHALL be ignored if the request body media type is not application/x-www-form-urlencoded.
-  bool? allowReserved = false;
+  ///
+  /// `null` means not given; see [effectiveAllowReserved].
+  bool? allowReserved;
 
   /// When this is true, property values of type array or object generate separate parameters for each value of the array, or key-value-pair of the map.
   ///
   /// For other types of properties this property has no effect. When style is form, the default value is true. For all other styles, the default value is false. This property SHALL be ignored if the request body media type is not application/x-www-form-urlencoded.
-  bool? explode = false;
+  ///
+  /// `null` means not given; see [effectiveExplode].
+  bool? explode;
 
   /// Describes how a specific property value will be serialized depending on its type.
   ///
   /// See [APIParameter] for details on the style property. The behavior follows the same values as query parameters, including default values. This property SHALL be ignored if the request body media type is not application/x-www-form-urlencoded.
+  ///
+  /// `null` means not given; see [effectiveStyle].
   String? style;
+
+  /// [style], or its default, `form` (as for query parameters).
+  ///
+  /// Like [effectiveExplode] and [effectiveAllowReserved], this only applies
+  /// when the request body is `application/x-www-form-urlencoded`;
+  /// otherwise [contentType] governs.
+  String get effectiveStyle => style ?? 'form';
+
+  /// [explode], or its default: true when [effectiveStyle] is `form`.
+  bool get effectiveExplode => explode ?? effectiveStyle == 'form';
+
+  /// [allowReserved], or its default, false.
+  bool get effectiveAllowReserved => allowReserved ?? false;
 
   @override
   void decode(KeyedArchive object) {

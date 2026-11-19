@@ -156,7 +156,7 @@ final class APIParameter extends APIObject {
     _required = f;
   }
 
-  bool? _required = false;
+  bool? _required;
 
   /// Specifies that a parameter is deprecated and SHOULD be transitioned out of usage.
   bool get isDeprecated => _deprecated ?? false;
@@ -165,7 +165,7 @@ final class APIParameter extends APIObject {
     _deprecated = f;
   }
 
-  bool? _deprecated = false;
+  bool? _deprecated;
 
   /// The location of the parameter.
   ///
@@ -176,25 +176,56 @@ final class APIParameter extends APIObject {
   /// The schema defining the type used for the parameter.
   APISchemaObject? schema;
 
-  // Sets the ability to pass empty-valued parameters.
-  //
-  // This is valid only for query parameters and allows sending a parameter with an empty value. Default value is false. If style is used, and if behavior is n/a (cannot be serialized), the value of allowEmptyValue SHALL be ignored.
-  bool? allowEmptyValue = false;
+  /// Sets the ability to pass empty-valued parameters.
+  ///
+  /// This is valid only for query parameters and allows sending a parameter with an empty value. Default value is false. If style is used, and if behavior is n/a (cannot be serialized), the value of allowEmptyValue SHALL be ignored.
+  ///
+  /// `null` means not given; see [effectiveAllowEmptyValue].
+  bool? allowEmptyValue;
 
   /// Describes how the parameter value will be serialized depending on the type of the parameter value.
   ///
   /// Default values (based on value of in): for query - form; for path - simple; for header - simple; for cookie - form.
+  ///
+  /// `null` means not given; see [effectiveStyle].
   String? style;
 
   /// When this is true, parameter values of type array or object generate separate parameters for each value of the array or key-value pair of the map.
   ///
   /// For other types of parameters this property has no effect. When style is form, the default value is true. For all other styles, the default value is false.
-  bool? explode = false;
+  ///
+  /// `null` means not given; see [effectiveExplode].
+  bool? explode;
 
   /// Determines whether the parameter value SHOULD allow reserved characters, as defined by RFC3986 :/?#[]@!$&'()*+,;= to be included without percent-encoding.
   ///
   /// This property only applies to parameters with an in value of query. The default value is false.
-  bool? allowReserved = false;
+  ///
+  /// `null` means not given; see [effectiveAllowReserved].
+  bool? allowReserved;
+
+  /// [style], or its default for [location]: `form` for query and cookie
+  /// parameters, `simple` for path and header parameters. Also `simple`
+  /// when [location] is null, which includes an unknown `in` value.
+  String get effectiveStyle =>
+      style ??
+      switch (location) {
+        APIParameterLocation.query || APIParameterLocation.cookie => 'form',
+        APIParameterLocation.path ||
+        APIParameterLocation.header ||
+        null => 'simple',
+      };
+
+  /// [explode], or its default: true when [effectiveStyle] is `form`.
+  bool get effectiveExplode => explode ?? effectiveStyle == 'form';
+
+  /// [allowReserved], or its default, false. Only applies to query
+  /// parameters.
+  bool get effectiveAllowReserved => allowReserved ?? false;
+
+  /// [allowEmptyValue], or its default, false. Only applies to query
+  /// parameters.
+  bool get effectiveAllowEmptyValue => allowEmptyValue ?? false;
 
   /// A map containing the representations for the parameter.
   ///

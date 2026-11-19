@@ -8,8 +8,9 @@
 - Analysis with `strict-casts`, `strict-inference` and `strict-raw-types`,
   lints 6, and `dart fix` applied (single quotes, `@override`, ...).
 - Getter/setter pairs that only wrapped a private field are plain fields now
-  (`explode`, `allowReserved`, `allowEmptyValue`, `isDeprecated`,
-  `isRequired`). Same names and types, so callers are unaffected.
+  (`explode`, `allowReserved` and `allowEmptyValue` on `APIParameter`,
+  `APIOperation.isDeprecated`). Same names and types, so callers are
+  unaffected.
 - `APIType`, `APIParameterLocation` and `APISecuritySchemeType` are enhanced
   enums with `jsonValue`, `fromJson` (returns `null` for unknown values) and
   `toJson`. The `*Codec` classes are deprecated and will be removed.
@@ -87,6 +88,19 @@
   REQUIRED fields stay nullable. A document without `info`, or a security
   scheme with a missing or unknown `type`, now decodes (with `null`) instead
   of throwing; `validate()` reports them.
+- New getters apply the spec defaults: `effectiveStyle` (by parameter
+  location) and `effectiveExplode` (true only for `form`) on `APIParameter`,
+  `APIHeader` and `APIEncoding`; `effectiveAllowReserved` on `APIParameter`
+  and `APIEncoding`; `effectiveAllowEmptyValue` on `APIParameter`. The raw
+  fields stay `bool?`/`String?`, with `null` meaning not given.
+- **Breaking:** `explode`, `allowReserved`, `allowEmptyValue`, `required` and
+  `deprecated` on `APIParameter`, and `explode`/`allowReserved` on
+  `APIEncoding`, now start as `null` instead of `false` for objects built
+  with `APIParameter.empty()`, `APIParameter.path()` and
+  `APIEncoding.empty()`, so they are no longer written as an explicit
+  `false`. For a query or cookie parameter (or an encoding) a missing
+  `explode` means true, so code that relied on the implicit `false` must now
+  set `explode = false`. Decoded documents are unaffected.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 
