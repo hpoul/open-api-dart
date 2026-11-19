@@ -1,23 +1,33 @@
 import 'package:meta/meta.dart';
-import 'package:codable_forked/codable.dart';
+import 'package:open_api_forked/src/codec/keyed_archive.dart';
 
-export 'package:codable_forked/codable.dart';
+/// Base class of every object in an OpenAPI document.
+///
+/// Subclasses read their fields in [decode] and write them in [encode].
+/// Both take the package's internal `KeyedArchive`; calling or overriding
+/// them from outside this package is not supported. Use
+/// `APIDocument.fromMap` and `asMap()` instead.
+class APIObject {
+  /// If this object is a `$ref`, the path of the referenced object, e.g.
+  /// `/components/schemas/Pet` for `#/components/schemas/Pet`.
+  ///
+  /// When decoded, a reference object also exposes the fields of the object
+  /// it references.
+  Uri? referenceURI;
 
-class APIObject extends Coding {
+  /// Specification extensions: the `x-` keys of this object.
   Map<String, dynamic> extensions = {};
 
   @mustCallSuper
-  @override
   void decode(KeyedArchive object) {
-    super.decode(object);
+    referenceURI = object.referenceURI;
 
     final extensionKeys = object.keys.where((k) => k.startsWith('x-'));
-    for (var key in extensionKeys) {
+    for (final key in extensionKeys) {
       extensions[key] = object.decode<Object?>(key);
     }
   }
 
-  @override
   @mustCallSuper
   void encode(KeyedArchive object) {
     final invalidKeys = extensions.keys

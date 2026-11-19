@@ -1,4 +1,4 @@
-import 'package:codable_forked/cast.dart' as cast;
+import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/callback.dart';
 import 'package:open_api_forked/src/v3/parameter.dart';
@@ -130,15 +130,10 @@ class APIOperation extends APIObject {
   }
 
   @override
-  Map<String, cast.Cast<dynamic>> get castMap => {
-    'tags': cast.List(cast.String),
-  };
-
-  @override
   void decode(KeyedArchive object) {
     super.decode(object);
 
-    tags = object.decode('tags');
+    tags = object.decodeList<String>('tags');
     summary = object.decode('summary');
     description = object.decode('description');
     id = object.decode('operationId');
