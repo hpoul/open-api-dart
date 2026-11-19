@@ -1,7 +1,7 @@
-import 'package:open_api_forked/src/v3/link.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/header.dart';
+import 'package:open_api_forked/src/v3/link.dart';
 import 'package:open_api_forked/src/v3/media_type.dart';
 import 'package:open_api_forked/src/v3/schema.dart';
 
@@ -47,6 +47,9 @@ final class APIResponse extends APIObject {
   /// The key is a media type or media type range and the value describes it. For responses that match multiple keys, only the most specific key is applicable. e.g. text/plain overrides text/*
   Map<String, APIMediaType> content = {};
 
+  /// Operations that can be reached from this response, by a short name.
+  Map<String, APILink> links = {};
+
   /// Adds a [header] to [headers] for [name].
   ///
   /// If the key does not exist in [headers], [header] is added for the key.
@@ -83,9 +86,6 @@ final class APIResponse extends APIObject {
       existingContent.schema = APISchemaObject()..oneOf = [schema, bodyObject];
     }
   }
-
-  /// Operations that can be reached from this response, by a short name.
-  Map<String, APILink> links = {};
 
   @override
   void decode(KeyedArchive object) {

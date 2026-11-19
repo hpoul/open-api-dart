@@ -3,6 +3,7 @@
 
 import 'dart:collection';
 
+import 'package:open_api_forked/src/codec/free_form.dart';
 import 'package:open_api_forked/src/codec/list_archive.dart';
 import 'package:open_api_forked/src/codec/resolver.dart';
 import 'package:open_api_forked/src/exception.dart';
@@ -164,7 +165,8 @@ final class KeyedArchive extends Object
 
   dynamic _getValue(String? key) {
     if (_map.containsKey(key)) {
-      return _map[key];
+      final value = _map[key];
+      return value is FreeForm ? value.value : value;
     }
 
     return _objectReference?._getValue(key);
@@ -222,8 +224,10 @@ final class KeyedArchive extends Object
   /// encoding [object] can emit them again. Called by [APIObject.decode].
   void rememberEmptyKeys(APIObject object) {
     final keys = {
-      for (final MapEntry(:key, :value) in _map.entries)
-        if ((value is Map && value.isEmpty) || (value is List && value.isEmpty))
+      for (final MapEntry(:key, value: raw) in _map.entries)
+        if (raw is FreeForm ? raw.value : raw case final value
+            when (value is Map && value.isEmpty) ||
+                (value is List && value.isEmpty))
           key,
     };
     _emptyKeysOnDecode[object] = keys.isEmpty ? null : keys;

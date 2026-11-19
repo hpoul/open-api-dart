@@ -117,8 +117,8 @@
   `APISchemaObject($ref: #/components/schemas/Pet)`, instead of
   `Instance of '...'`. Some types print only `TypeName()`; nesting is cut
   off after a few levels, so cycles built in code don't overflow.
-- The rest of OpenAPI 3.0 is modelled, so these fields are no longer
-  dropped when a document is decoded and encoded again:
+- The remaining OpenAPI 3.0 objects are modelled, so these fields are no
+  longer dropped when a document is decoded and encoded again:
   - New `APIExternalDocumentation` as `externalDocs` on `APIDocument`,
     `APIOperation`, `APITag` and `APISchemaObject`.
   - New `APIDiscriminator` (`discriminator`), `APIXml` (`xml`) and
@@ -126,15 +126,29 @@
   - New `APIExample`: `example`/`examples` on `APIParameter` and
     `APIMediaType`, and `APIComponents.examples`.
   - New `APILink`: `APIResponse.links` and `APIComponents.links`.
+  - `APIPath.servers`.
   - `resolveUri` handles `#/components/examples/...` and
     `#/components/links/...`.
+  URLs (`externalDocs.url`, `externalValue`, `xml.namespace`) are `Uri`s,
+  like the other URLs except server templates, so they are normalised when
+  encoded again. Explicit `null` values are not encoded.
 - **Breaking:** `APIHeader.examples` is a `Map<String, APIExample>` (empty
-  by default) instead of decoded data, and `$ref`s inside `examples` are
-  now checked and resolved like other references. An Example Object's
-  `value` is still free-form.
-- `validate()` also reports a missing `externalDocs.url`, `example` together
-  with `examples`, an example with both `value` and `externalValue`, and a
-  link without exactly one of `operationRef` and `operationId`.
+  by default) instead of decoded data.
+- Free-form values are decided by position, not by key name, and kept as
+  plain data: `example`, schema `default` and `enum`, an Example's `value`,
+  a Link's `parameters` and `requestBody`, and `x-` extension values. A
+  `$ref`-shaped map in there is returned as is (it used to be resolved,
+  rejected, or crash with a `TypeError`), and maps in there are
+  `Map<String, dynamic>`. Conversely, a `$ref` under a name such as
+  `default` in `examples`, `properties` or `links` is now checked like any
+  other reference instead of being skipped. A JSON Schema `examples` list
+  on a schema (not part of 3.0) is ignored.
+- `validate()` also reports a missing `externalDocs.url` (in schemas too)
+  or discriminator `propertyName`, `example` together with `examples`, an
+  example with both `value` and `externalValue`, a link without exactly one
+  of `operationRef` and `operationId`, a link `operationId` that no
+  operation has, and path-level servers without `url`. It now walks
+  schemas, but checks only these OpenAPI additions in them.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 

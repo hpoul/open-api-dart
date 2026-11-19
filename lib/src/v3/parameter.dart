@@ -1,7 +1,7 @@
-import 'package:open_api_forked/src/v3/example.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/document.dart';
+import 'package:open_api_forked/src/v3/example.dart';
 import 'package:open_api_forked/src/v3/media_type.dart';
 import 'package:open_api_forked/src/v3/schema.dart';
 

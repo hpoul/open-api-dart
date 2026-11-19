@@ -1,9 +1,9 @@
-import 'package:open_api_forked/src/v3/xml.dart';
-import 'package:open_api_forked/src/v3/discriminator.dart';
-import 'package:open_api_forked/src/v3/external_docs.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
+import 'package:open_api_forked/src/v3/discriminator.dart';
+import 'package:open_api_forked/src/v3/external_docs.dart';
 import 'package:open_api_forked/src/v3/types.dart';
+import 'package:open_api_forked/src/v3/xml.dart';
 
 enum APISchemaAdditionalPropertyPolicy {
   /// When [APISchemaObject] prevents properties other than those defined by [APISchemaObject.properties] from being included

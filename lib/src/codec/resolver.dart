@@ -13,9 +13,14 @@ final class ReferenceResolver {
 
   final KeyedArchive document;
 
+  /// The object at [ref], or null if there is none (or it is not an
+  /// object, for example free-form data).
   KeyedArchive? resolve(Uri ref) {
-    return ref.pathSegments.fold<KeyedArchive?>(document, (objectPtr, segment) {
-      return (objectPtr! as Map)[segment] as KeyedArchive?;
-    });
+    KeyedArchive? object = document;
+    for (final segment in ref.pathSegments) {
+      final next = object?[segment];
+      object = next is KeyedArchive ? next : null;
+    }
+    return object;
   }
 }

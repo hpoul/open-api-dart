@@ -20,6 +20,9 @@ const _specLiteral = {
   ],
   'paths': {
     '/pets/{id}': {
+      'servers': [
+        {'url': '/v2'},
+      ],
       'get': {
         'operationId': 'getPet',
         'externalDocs': {'url': 'https://example.com/get'},
@@ -66,7 +69,7 @@ const _specLiteral = {
             },
             'links': {
               'owner': {
-                'operationId': 'getOwner',
+                'operationId': 'getPet',
                 'parameters': {'petId': r'$response.body#/id'},
                 'server': {'url': 'https://owners.example.com'},
               },
@@ -155,7 +158,7 @@ void main() {
     expect(response.content['text/plain']!.example, 'Tom');
 
     final owner = response.links['owner']!;
-    expect(owner.operationId, 'getOwner');
+    expect(owner.operationId, 'getPet');
     expect(owner.parameters, {'petId': r'$response.body#/id'});
     expect(owner.server!.url, 'https://owners.example.com');
     final self = response.links['shared']!;
@@ -224,7 +227,11 @@ void main() {
   test('validate reports the new MUST rules', () {
     final spec = _spec();
     spec['externalDocs'] = {'description': 'no url'};
-    final op = (spec['paths'] as Map)['/pets/{id}']['get'] as Map;
+    final path = (spec['paths'] as Map)['/pets/{id}'] as Map;
+    path['servers'] = [
+      {'description': 'no url'},
+    ];
+    final op = path['get'] as Map;
     (op['parameters'] as List).last['examples'] = {
       'x': {'value': 1, 'externalValue': 'https://example.com/x'},
     };
@@ -233,18 +240,188 @@ void main() {
     (links['owner']['server'] as Map).remove('url');
     final components = spec['components'] as Map;
     components['links']['Self'].remove('operationRef');
+    components['links']['Other'] = {'operationId': 'nope'};
     components['examples']['bad key'] = {'value': 1};
+    final pet = components['schemas']['Pet'] as Map;
+    (pet['discriminator'] as Map).remove('propertyName');
+    pet['properties']['name']['externalDocs'] = <String, Object?>{};
     expect(
       [for (final e in APIDocument.fromMap(spec).validate()) e.pointer],
       [
-        '#/paths/~1pets~1{id}/get/parameters/1',
-        '#/paths/~1pets~1{id}/get/parameters/1/examples/x',
+        '#/paths/~1pets~1{id}/servers/0/url',
+        '#/paths/~1pets~1{id}/get/parameters/1/examples',
+        '#/paths/~1pets~1{id}/get/parameters/1/examples/x/externalValue',
         '#/paths/~1pets~1{id}/get/responses/200/links/owner',
         '#/paths/~1pets~1{id}/get/responses/200/links/owner/server/url',
         '#/components/examples/bad key',
+        '#/components/schemas/Pet/discriminator/propertyName',
+        '#/components/schemas/Pet/properties/name/externalDocs/url',
         '#/components/links/Self',
         '#/externalDocs/url',
+        '#/components/links/Other/operationId',
       ],
     );
+  });
+
+  group('free-form values', () {
+    Map<String, dynamic> withExampleValue(Object? value) {
+      final spec = _spec();
+      ((spec['components'] as Map)['examples'] as Map)['Id'] = {'value': value};
+      return spec;
+    }
+
+    for (final value in [
+      {r'$ref': '#/nope/deeper'},
+      {r'$ref': '#/info/title'},
+      {r'$ref': 'other.json#/x'},
+      {r'$ref': '#/components/schemas/Pet'},
+    ]) {
+      test('keep a \$ref-shaped value as data: $value', () {
+        final doc = APIDocument.fromMap(withExampleValue(value));
+        final example = doc.components!.examples['Id']!;
+        expect(example.value, value);
+        expect(example.value, isA<Map<String, dynamic>>());
+        expect(doc.asMap()['components']['examples']['Id'], {'value': value});
+      });
+    }
+
+    test('schema example, default and enum are data', () {
+      final spec = _spec();
+      final pet = (spec['components'] as Map)['schemas']['Pet'] as Map;
+      pet['example'] = {r'$ref': '#/info/title/x'};
+      pet['default'] = {r'$ref': 'other.json'};
+      pet['enum'] = [
+        {r'$ref': '#/nope'},
+      ];
+      final decoded = APIDocument.fromMap(spec).components!.schemas['Pet']!;
+      expect(decoded.example, {r'$ref': '#/info/title/x'});
+      expect(decoded.defaultValue, {r'$ref': 'other.json'});
+      expect(decoded.enumerated, [
+        {r'$ref': '#/nope'},
+      ]);
+    });
+
+    test('link parameters and requestBody are data', () {
+      final spec = _spec();
+      spec['components']['links']['Self']['requestBody'] = {
+        r'$ref': '#/info/title',
+      };
+      final link = APIDocument.fromMap(spec).components!.links['Self']!;
+      expect(link.requestBody, {r'$ref': '#/info/title'});
+    });
+
+    test('names like default in name maps are still checked', () {
+      final spec = _spec();
+      final content =
+          (spec['paths']
+                  as Map)['/pets/{id}']['get']['responses']['200']['content']['application/json']
+              as Map;
+      content['examples'] = {
+        'default': {r'$ref': 'other.yaml#/components/examples/Id'},
+      };
+      expect(
+        () => APIDocument.fromMap(spec),
+        throwsA(
+          isA<OpenApiFormatException>().having(
+            (e) => e.pointer,
+            'pointer',
+            '#/paths/~1pets~1{id}/get/responses/200/content/application~1json/examples/default/\$ref',
+          ),
+        ),
+      );
+      content['examples'] = {
+        'default': {r'$ref': '#/components/examples/Id'},
+      };
+      final doc = APIDocument.fromMap(spec);
+      expect(
+        doc
+            .paths['/pets/{id}']!
+            .operations['get']!
+            .responses['200']!
+            .content['application/json']!
+            .examples['default']!
+            .value,
+        'b2',
+      );
+    });
+
+    test('a JSON Schema examples list on a schema is ignored', () {
+      final spec = _spec();
+      spec['components']['schemas']['Pet']['examples'] = [
+        {r'$ref': 'https://json-schema.org/draft/2020-12/schema'},
+      ];
+      expect(APIDocument.fromMap(spec).components!.schemas['Pet'], isNotNull);
+    });
+
+    test('a reference into free-form data is a format error', () {
+      final spec = _spec();
+      spec['components']['schemas']['Pet']['example'] = {
+        'a': {'type': 'string'},
+      };
+      spec['components']['schemas']['Ref'] = {
+        r'$ref': '#/components/schemas/Pet/example/a',
+      };
+      expect(
+        () => APIDocument.fromMap(spec),
+        throwsA(isA<OpenApiFormatException>()),
+      );
+    });
+  });
+
+  group('malformed input is a format error', () {
+    for (final (name, change, pointer)
+        in <(String, void Function(Map<String, dynamic>), String)>[
+          ('externalDocs', (s) => s['externalDocs'] = 'str', '#/externalDocs'),
+          (
+            'xml attribute',
+            (s) =>
+                s['components']['schemas']['Pet']['xml']['attribute'] = 'yes',
+            '#/components/schemas/Pet/xml/attribute',
+          ),
+          (
+            'links entry',
+            (s) => s['components']['links']['Other'] = 1,
+            '#/components/links/Other',
+          ),
+          (
+            'null example',
+            (s) => s['components']['examples']['Other'] = null,
+            '#/components/examples/Other',
+          ),
+          (
+            'link server',
+            (s) =>
+                s['paths']['/pets/{id}']['get']['responses']['200']['links']['owner']['server'] =
+                    's',
+            '#/paths/~1pets~1{id}/get/responses/200/links/owner/server',
+          ),
+          (
+            'externalValue',
+            (s) =>
+                s['paths']['/pets/{id}']['get']['parameters'][0]['examples']['short']['externalValue'] =
+                    1,
+            '#/paths/~1pets~1{id}/get/parameters/0/examples/short/externalValue',
+          ),
+          (
+            'path servers',
+            (s) => s['paths']['/pets/{id}']['servers'] = 'x',
+            '#/paths/~1pets~1{id}/servers',
+          ),
+        ]) {
+      test(name, () {
+        final spec = _spec();
+        change(spec);
+        expect(
+          () => APIDocument.fromMap(spec),
+          throwsA(
+            isA<OpenApiFormatException>().having(
+              (e) => e.pointer,
+              'pointer',
+              pointer,
+            ),
+          ),
+        );
+      });
+    }
   });
 }

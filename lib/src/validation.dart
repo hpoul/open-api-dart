@@ -30,6 +30,12 @@ final class _Validator {
   /// Pointer of the first operation with each operationId.
   final _operationIds = <String, String>{};
 
+  /// Links that name an operationId, checked once all operations are known.
+  final _linkTargets = <(String, String)>[];
+
+  /// Schemas already checked, so that cycles built in code end.
+  final _seenSchemas = Set<APISchemaObject>.identity();
+
   void _issue(String pointer, String message) =>
       issues.add(OpenApiFormatException(message, pointer: pointer));
 
@@ -84,6 +90,14 @@ final class _Validator {
     }
     _security(p, d.security);
     _externalDocs(p, d.externalDocs);
+    for (final (pointer, id) in _linkTargets) {
+      if (!_operationIds.containsKey(id)) {
+        _issue(
+          appendPointer(pointer, 'operationId'),
+          "Link names operationId '$id', which no operation has.",
+        );
+      }
+    }
     final tagNames = <String>{};
     for (final (i, tag) in d.tags.indexed) {
       final tp = appendPointer(appendPointer(p, 'tags'), i);
@@ -182,6 +196,7 @@ final class _Validator {
   /// expressions instead and pass null.
   void _path(String p, APIPath path, {String? template}) {
     _parameters(p, path.parameters);
+    _servers(p, path.servers);
     path.operations.forEach((method, operation) {
       if (_isRef(operation)) {
         return;
@@ -237,6 +252,7 @@ final class _Validator {
   }
 
   void _parameter(String p, APIParameter parameter) {
+    _schemaAt(p, 'schema', parameter.schema);
     _required(p, 'name', parameter.name);
     _requiredEnum(p, 'in', parameter.location);
     final hasSchema = parameter.schema != null;
@@ -301,14 +317,20 @@ final class _Validator {
   /// Checks `example`/`examples` of a parameter, header or media type.
   void _examples(String p, Object? example, Map<String, APIExample> examples) {
     if (example != null && examples.isNotEmpty) {
-      _issue(p, "'example' and 'examples' are mutually exclusive.");
+      _issue(
+        appendPointer(p, 'examples'),
+        "'example' and 'examples' are mutually exclusive.",
+      );
     }
     _each(appendPointer(p, 'examples'), examples, _example);
   }
 
   void _example(String p, APIExample example) {
     if (example.value != null && example.externalValue != null) {
-      _issue(p, "'value' and 'externalValue' are mutually exclusive.");
+      _issue(
+        appendPointer(p, 'externalValue'),
+        "'value' and 'externalValue' are mutually exclusive.",
+      );
     }
   }
 
@@ -318,6 +340,10 @@ final class _Validator {
         p,
         "A link must have exactly one of 'operationRef' and 'operationId'.",
       );
+    }
+    final id = link.operationId;
+    if (id != null && link.operationRef == null) {
+      _linkTargets.add((p, id));
     }
     final server = link.server;
     if (server != null && !_isRef(server)) {
@@ -340,6 +366,7 @@ final class _Validator {
   }
 
   void _header(String p, APIHeader header) {
+    _schemaAt(p, 'schema', header.schema);
     _content(p, header.content);
     _examples(p, header.example, header.examples);
   }
@@ -347,6 +374,7 @@ final class _Validator {
   void _content(String p, Map<String, APIMediaType> content) {
     _each(appendPointer(p, 'content'), content, (p, mediaType) {
       _examples(p, mediaType.example, mediaType.examples);
+      _schemaAt(p, 'schema', mediaType.schema);
       _each(appendPointer(p, 'encoding'), mediaType.encoding, (p, encoding) {
         _each(appendPointer(p, 'headers'), encoding.headers, _header);
       });
@@ -378,6 +406,7 @@ final class _Validator {
     keys('examples', c.examples);
     keys('links', c.links);
 
+    _each(appendPointer(p, 'schemas'), c.schemas, _schema);
     _each(appendPointer(p, 'responses'), c.responses, _response);
     _each(appendPointer(p, 'parameters'), c.parameters, _parameter);
     _each(appendPointer(p, 'requestBodies'), c.requestBodies, _requestBody);
@@ -386,6 +415,33 @@ final class _Validator {
     _each(appendPointer(p, 'callbacks'), c.callbacks, _callback);
     _each(appendPointer(p, 'examples'), c.examples, _example);
     _each(appendPointer(p, 'links'), c.links, _link);
+  }
+
+  void _schemaAt(String p, String key, APISchemaObject? schema) {
+    if (schema != null && !_isRef(schema)) {
+      _schema(appendPointer(p, key), schema);
+    }
+  }
+
+  /// Checks a schema and the schemas inside it. Only the OpenAPI additions
+  /// (`discriminator`, `externalDocs`) are checked, not JSON Schema itself.
+  void _schema(String p, APISchemaObject schema) {
+    if (!_seenSchemas.add(schema)) {
+      return;
+    }
+    final discriminator = schema.discriminator;
+    if (discriminator != null && !_isRef(discriminator)) {
+      final dp = appendPointer(p, 'discriminator');
+      _required(dp, 'propertyName', discriminator.propertyName);
+    }
+    _externalDocs(p, schema.externalDocs);
+    _each(appendPointer(p, 'properties'), schema.properties, _schema);
+    _schemaAt(p, 'items', schema.items);
+    _schemaAt(p, 'not', schema.not);
+    _schemaAt(p, 'additionalProperties', schema.additionalPropertySchema);
+    _eachIndexed(appendPointer(p, 'allOf'), schema.allOf, _schema);
+    _eachIndexed(appendPointer(p, 'oneOf'), schema.oneOf, _schema);
+    _eachIndexed(appendPointer(p, 'anyOf'), schema.anyOf, _schema);
   }
 
   void _scheme(String p, APISecurityScheme scheme) {

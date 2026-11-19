@@ -1,8 +1,9 @@
-import 'package:open_api_forked/src/v3/external_docs.dart';
+import 'package:open_api_forked/src/codec/free_form.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/components.dart';
+import 'package:open_api_forked/src/v3/external_docs.dart';
 import 'package:open_api_forked/src/v3/metadata.dart';
 import 'package:open_api_forked/src/v3/operation.dart';
 import 'package:open_api_forked/src/v3/path.dart';
@@ -30,32 +31,89 @@ final class APIDocument extends APIObject {
   /// expected, or a `$ref` that points to another file or to nothing in this
   /// document.
   APIDocument.fromMap(Map<String, dynamic> map) {
-    _checkReferences(map, map, '#');
-    decode(KeyedArchive.unarchive(map, allowReferences: true));
+    final prepared = Map<String, dynamic>.from(
+      _prepare(map, map, '#', _Node.object)! as Map,
+    );
+    decode(KeyedArchive.unarchive(prepared, allowReferences: true));
   }
 
-  /// Keys whose values are free-form data, not OpenAPI objects. A `$ref`
-  /// in there is just data, so it is not checked.
-  static const _freeFormKeys = {'example', 'default', 'enum', 'value'};
+  /// Fields of OpenAPI objects whose values are free-form data: schema
+  /// `example`/`default`/`enum`, the `example` of parameters, headers and
+  /// media types, an Example's `value`, and server variable
+  /// `default`/`enum`.
+  static const _freeFormFields = {'example', 'default', 'enum', 'value'};
 
-  /// Validates every `$ref` in [node] before [KeyedArchive] resolves them,
-  /// so that bad references fail with a clear message instead of a
-  /// [TypeError], and references into other files are not silently
-  /// resolved against this document.
-  static void _checkReferences(
+  /// Link fields holding constants or runtime expressions.
+  static const _freeFormLinkFields = {'parameters', 'requestBody'};
+
+  /// Fields whose value is a map from names to OpenAPI objects.
+  static const _nameMapFields = {
+    'paths',
+    'schemas',
+    'responses',
+    'parameters',
+    'examples',
+    'requestBodies',
+    'headers',
+    'securitySchemes',
+    'properties',
+    'content',
+    'encoding',
+    'variables',
+    'flows',
+  };
+
+  /// Fields whose value is a map from names to strings.
+  static const _stringMapFields = {'mapping', 'scopes'};
+
+  /// Returns a copy of [node] in which free-form values are wrapped in
+  /// [FreeForm], so that [KeyedArchive] keeps them as data, and checks
+  /// every other `$ref` before [KeyedArchive] resolves it, so that bad
+  /// references fail with a clear message instead of a [TypeError], and
+  /// references into other files are not silently resolved against this
+  /// document.
+  ///
+  /// Which values are free-form depends on their position: in a name map
+  /// such as `examples` or `properties`, a key like `default` is a name.
+  static Object? _prepare(
     Map<String, dynamic> root,
     Object? node,
     String pointer,
+    _Node kind,
   ) {
     if (node is List) {
-      for (final (i, item) in node.indexed) {
-        _checkReferences(root, item, appendPointer(pointer, i));
-      }
-      return;
+      return [
+        for (final (i, item) in node.indexed)
+          _prepare(root, item, appendPointer(pointer, i), _Node.object),
+      ];
     }
     if (node is! Map) {
-      return;
+      return node;
     }
+    _checkReference(root, node, pointer);
+    return <dynamic, dynamic>{
+      for (final MapEntry(:key, :value) in node.entries)
+        key: switch (key) {
+          String() when kind.isFreeForm(key, value) => FreeForm(
+            value,
+            appendPointer(pointer, key),
+          ),
+          String() => _prepare(
+            root,
+            value,
+            appendPointer(pointer, key),
+            kind.child(key, value),
+          ),
+          _ => value,
+        },
+    };
+  }
+
+  static void _checkReference(
+    Map<String, dynamic> root,
+    Map<dynamic, dynamic> node,
+    String pointer,
+  ) {
     final ref = node[r'$ref'];
     if (ref is String) {
       if (!ref.startsWith('#')) {
@@ -89,13 +147,6 @@ final class APIDocument extends APIObject {
         target = _resolvePointer(root, next);
       }
     }
-    node.forEach((key, value) {
-      if (key is String &&
-          (key.startsWith('x-') || _freeFormKeys.contains(key))) {
-        return;
-      }
-      _checkReferences(root, value, appendPointer(pointer, key as Object));
-    });
   }
 
   /// Walks [ref] from [root] the way [KeyedArchive] resolves it, including
@@ -203,12 +254,12 @@ final class APIDocument extends APIObject {
   /// The order of the tags can be used to reflect on their order by the parsing tools. Not all tags that are used by the Operation Object must be declared. The tags that are not declared MAY be organized randomly or based on the tools' logic. Each tag name in the list MUST be unique.
   List<APITag> tags = [];
 
+  /// Additional external documentation.
+  APIExternalDocumentation? externalDocs;
+
   Map<String, dynamic> asMap() {
     return KeyedArchive.archive(this, allowReferences: true);
   }
-
-  /// Additional external documentation.
-  APIExternalDocumentation? externalDocs;
 
   @override
   void decode(KeyedArchive object) {
@@ -252,4 +303,54 @@ final class APIDocument extends APIObject {
     object.encodeObjects('tags', tags, omitEmpty: true);
     object.encodeObject('externalDocs', externalDocs);
   }
+}
+
+/// What a map in a document is, for deciding which of its values are
+/// free-form.
+enum _Node {
+  /// An OpenAPI object, such as a schema or an operation.
+  object,
+
+  /// A Link Object.
+  link,
+
+  /// A map from names to OpenAPI objects, such as `properties`.
+  nameMap,
+
+  /// A map from names to Link Objects.
+  linkMap,
+
+  /// A map from names to Callback Objects (`callbacks`).
+  callbackMap,
+
+  /// A map from names to strings, or free-form data.
+  data;
+
+  /// The kind of the value for [key] in a map of this kind.
+  _Node child(String key, Object? value) => switch (this) {
+    nameMap => _Node.object,
+    linkMap => _Node.link,
+    callbackMap => _Node.nameMap,
+    data => _Node.data,
+    object || link => switch (key) {
+      'links' when value is Map => _Node.linkMap,
+      'callbacks' when value is Map => _Node.callbackMap,
+      _ when APIDocument._stringMapFields.contains(key) => _Node.data,
+      _ when APIDocument._nameMapFields.contains(key) && value is Map =>
+        _Node.nameMap,
+      _ => _Node.object,
+    },
+  };
+
+  /// Whether [value], for [key] in a map of this kind, is free-form data.
+  bool isFreeForm(String key, Object? value) => switch (this) {
+    object =>
+      key.startsWith('x-') ||
+          APIDocument._freeFormFields.contains(key) ||
+          // JSON Schema's `examples` (a list), which 3.0 does not have.
+          (key == 'examples' && value is List),
+    link =>
+      key.startsWith('x-') || APIDocument._freeFormLinkFields.contains(key),
+    nameMap || linkMap || callbackMap || data => false,
+  };
 }
