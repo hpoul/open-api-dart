@@ -300,8 +300,8 @@ void main() {
 
     test("Callbacks survive an encode/decode round trip", () {
       final encoded = APIDocument.fromMap(spec).asMap();
-      final callback = encoded["paths"]["/subscribe"]["post"]["callbacks"]
-          ["onEvent"] as Map;
+      final callback =
+          encoded["paths"]["/subscribe"]["post"]["callbacks"]["onEvent"] as Map;
       expect(callback["x-note"], "extension");
       expect(
           callback[r"{$request.body#/callbackUrl}"]["post"]["responses"]["200"]
@@ -351,6 +351,142 @@ void main() {
     final encoded = doc.asMap();
     expect(encoded["paths"]["/subscribe"]["post"]["callbacks"]["onEvent"],
         {r"$ref": "#/components/callbacks/Event"});
+  });
+
+  group("More crash regressions", () {
+    // Round trip through JSON so collections are typed like a parsed file.
+    Map<String, dynamic> minimal([Map<String, dynamic> extra = const {}]) =>
+        json.decode(json.encode({
+          "openapi": "3.0.0",
+          "info": {"title": "x", "version": "1"},
+          "paths": <String, dynamic>{},
+          ...extra,
+        })) as Map<String, dynamic>;
+
+    test("Document-level security encodes to JSON", () {
+      final doc = APIDocument.fromMap(minimal({
+        "security": [
+          {"bearer": <String>[]},
+          {
+            "oauth": ["read", "write"]
+          }
+        ],
+        "components": {
+          "securitySchemes": {
+            "bearer": {"type": "http", "scheme": "bearer"}
+          }
+        }
+      }));
+      final encoded = json.decode(json.encode(doc.asMap())) as Map;
+      expect(encoded["security"], [
+        {"bearer": []},
+        {
+          "oauth": ["read", "write"]
+        }
+      ]);
+    });
+
+    test("Empty document-level security stays distinct from absent", () {
+      expect(APIDocument.fromMap(minimal({"security": []})).security, isEmpty);
+      expect(APIDocument.fromMap(minimal()).security, isNull);
+      expect(APIDocument.fromMap(minimal({"security": []})).asMap()["security"],
+          isEmpty);
+    });
+
+    test("OAuth2 flow without scopes decodes to empty scopes", () {
+      final doc = APIDocument.fromMap(minimal({
+        "components": {
+          "securitySchemes": {
+            "oauth": {
+              "type": "oauth2",
+              "flows": {
+                "clientCredentials": {"tokenUrl": "https://example.com/token"}
+              }
+            }
+          }
+        }
+      }));
+      final flow = doc
+          .components!.securitySchemes!["oauth"]!.flows!["clientCredentials"]!;
+      expect(flow.scopes, isEmpty);
+      expect(flow.tokenURL, Uri.parse("https://example.com/token"));
+      expect(json.encode(doc.asMap()), contains('"scopes":{}'));
+    });
+
+    Map<String, dynamic> withRef(String ref) => minimal({
+          "components": {
+            "schemas": {
+              "B": {
+                "type": "object",
+                "properties": {
+                  "x": {"type": "string"}
+                }
+              },
+              "A": {r"$ref": ref}
+            }
+          }
+        });
+
+    for (final ref in [
+      "#/components/schemas/Missing",
+      "#/info/title",
+      "#/nope/x/y",
+      "#/components/schemas/B/type",
+    ]) {
+      test("Unresolvable reference '$ref' throws ArgumentError", () {
+        expect(
+            () => APIDocument.fromMap(withRef(ref)),
+            throwsA(isA<ArgumentError>().having(
+                (e) => e.message, "message", contains("Reference '$ref'"))));
+      });
+    }
+
+    test("Reference into a nested object still resolves", () {
+      final doc =
+          APIDocument.fromMap(withRef("#/components/schemas/B/properties/x"));
+      expect(doc.components!.schemas!["A"]!.type, APIType.string);
+    });
+
+    test("Reference through another reference still resolves", () {
+      final doc = APIDocument.fromMap(minimal({
+        "components": {
+          "schemas": {
+            "B": {
+              "type": "object",
+              "properties": {
+                "x": {"type": "string"}
+              }
+            },
+            "A": {r"$ref": "#/components/schemas/B"},
+            "C": {r"$ref": "#/components/schemas/A/properties/x"}
+          }
+        }
+      }));
+      expect(doc.components!.schemas!["C"]!.type, APIType.string);
+    });
+
+    test("\$ref inside examples and extensions is left alone", () {
+      final doc = APIDocument.fromMap(minimal({
+        "x-snippet": {r"$ref": "other.json"},
+        "components": {
+          "schemas": {
+            "A": {
+              "type": "object",
+              "example": {r"$ref": "https://example.com/a.json"}
+            }
+          }
+        }
+      }));
+      expect(doc.components!.schemas!["A"]!.type, APIType.object);
+    });
+
+    test("Reference to another file throws instead of resolving locally", () {
+      expect(
+          () =>
+              APIDocument.fromMap(withRef("other.yaml#/components/schemas/B")),
+          throwsA(isA<ArgumentError>().having(
+              (e) => e.message, "message", contains("not a local reference"))));
+    });
   });
 
   group("Phase 0 crash regressions", () {

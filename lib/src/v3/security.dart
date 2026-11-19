@@ -215,17 +215,17 @@ class APISecurityScheme extends APIObject {
 class APISecuritySchemeOAuth2Flow extends APIObject {
   APISecuritySchemeOAuth2Flow.empty();
 
-  APISecuritySchemeOAuth2Flow.code(this.authorizationURL, this.tokenURL,
-      this.refreshURL, this.scopes);
+  APISecuritySchemeOAuth2Flow.code(
+      this.authorizationURL, this.tokenURL, this.refreshURL, this.scopes);
 
-  APISecuritySchemeOAuth2Flow.implicit(this.authorizationURL, this.refreshURL,
-      this.scopes);
+  APISecuritySchemeOAuth2Flow.implicit(
+      this.authorizationURL, this.refreshURL, this.scopes);
 
-  APISecuritySchemeOAuth2Flow.password(this.tokenURL, this.refreshURL,
-      this.scopes);
+  APISecuritySchemeOAuth2Flow.password(
+      this.tokenURL, this.refreshURL, this.scopes);
 
-  APISecuritySchemeOAuth2Flow.client(this.tokenURL, this.refreshURL,
-      this.scopes);
+  APISecuritySchemeOAuth2Flow.client(
+      this.tokenURL, this.refreshURL, this.scopes);
 
   /// The authorization URL to be used for this flow.
   ///
@@ -264,7 +264,10 @@ class APISecuritySchemeOAuth2Flow extends APIObject {
     tokenURL = object.decode("tokenUrl");
     refreshURL = object.decode("refreshUrl");
 
-    scopes = Map<String, String>.from(object.decode("scopes"));
+    // `scopes` is required by the spec, but often left out when empty.
+    final Map? decodedScopes = object.decode("scopes");
+    scopes =
+        decodedScopes == null ? {} : Map<String, String>.from(decodedScopes);
   }
 }
 

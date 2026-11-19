@@ -6,6 +6,10 @@
 - Fix decoding and encoding of callbacks (decoding crashed on any callback, encoding threw).
 - Fix crash decoding a server variable without `enum`.
 - Fix crash encoding an `openIdConnect` security scheme.
+- Fix document-level `security` encoding to non-JSON objects (`json.encode(doc.asMap())` threw).
+- An OAuth2 flow without `scopes` decodes to empty scopes instead of crashing.
+- `APIDocument.fromMap` throws an `ArgumentError` naming the reference when a `$ref` does not point to an object, instead of a `TypeError`.
+- **Behaviour change:** `APIDocument.fromMap` throws an `ArgumentError` for a `$ref` that is not a local `#/...` reference, e.g. `other.yaml#/...` or `https://example.com/schema.json`. These used to be resolved against the current document (a fragment-less ref resolved to the document root), silently picking the wrong object. `$ref` inside free-form data (`example`, `examples`, `default`, `enum`, `value`, `x-*` extensions) is not checked.
 
 ## 3.0.0+6
 
