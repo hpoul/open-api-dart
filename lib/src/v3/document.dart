@@ -1,4 +1,5 @@
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
+import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/components.dart';
 import 'package:open_api_forked/src/v3/metadata.dart';
@@ -13,10 +14,12 @@ final class APIDocument extends APIObject {
 
   /// Creates a specification from decoded JSON or YAML document object.
   ///
-  /// Throws an [ArgumentError] if the document contains a `$ref` that points
-  /// to another file, or that does not point to an object in this document.
+  /// Throws an [OpenApiFormatException] if the document does not have the
+  /// shape OpenAPI requires, for example a string where an object is
+  /// expected, or a `$ref` that points to another file or to nothing in this
+  /// document.
   APIDocument.fromMap(Map<String, dynamic> map) {
-    _checkReferences(map, map);
+    _checkReferences(map, map, '#');
     decode(KeyedArchive.unarchive(map, allowReferences: true));
   }
 
@@ -34,10 +37,14 @@ final class APIDocument extends APIObject {
   /// so that bad references fail with a clear message instead of a
   /// [TypeError], and references into other files are not silently
   /// resolved against this document.
-  static void _checkReferences(Map<String, dynamic> root, Object? node) {
+  static void _checkReferences(
+    Map<String, dynamic> root,
+    Object? node,
+    String pointer,
+  ) {
     if (node is List) {
-      for (final item in node) {
-        _checkReferences(root, item);
+      for (final (i, item) in node.indexed) {
+        _checkReferences(root, item, appendPointer(pointer, i));
       }
       return;
     }
@@ -47,16 +54,34 @@ final class APIDocument extends APIObject {
     final ref = node[r'$ref'];
     if (ref is String) {
       if (!ref.startsWith('#')) {
-        throw ArgumentError(
-          "Invalid document. Reference '$ref' is not a local reference "
-          "('#/...'); references to other documents are not supported.",
+        throw OpenApiFormatException(
+          "Reference '$ref' is not a local reference ('#/...'); references "
+          'to other documents are not supported.',
+          pointer: appendPointer(pointer, r'$ref'),
+          source: ref,
         );
       }
       if (_resolvePointer(root, ref) is! Map) {
-        throw ArgumentError(
-          "Invalid document. Reference '$ref' does not point to an object "
-          'in document.',
+        throw OpenApiFormatException(
+          "Reference '$ref' does not point to an object in document.",
+          pointer: appendPointer(pointer, r'$ref'),
+          source: ref,
         );
+      }
+      // A chain of objects that are only `$ref`s must end somewhere, or
+      // looking up a missing key would follow it forever.
+      final seen = {ref};
+      var target = _resolvePointer(root, ref);
+      while (target is Map && target[r'$ref'] is String) {
+        final next = target[r'$ref'] as String;
+        if (!seen.add(next)) {
+          throw OpenApiFormatException(
+            "Reference '$ref' is part of a cycle of references.",
+            pointer: appendPointer(pointer, r'$ref'),
+            source: ref,
+          );
+        }
+        target = _resolvePointer(root, next);
       }
     }
     node.forEach((key, value) {
@@ -64,7 +89,7 @@ final class APIDocument extends APIObject {
           (key.startsWith('x-') || _freeFormKeys.contains(key))) {
         return;
       }
-      _checkReferences(root, value);
+      _checkReferences(root, value, appendPointer(pointer, key as Object));
     });
   }
 

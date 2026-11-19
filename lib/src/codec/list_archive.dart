@@ -5,6 +5,7 @@ import 'dart:collection';
 
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/codec/resolver.dart';
+import 'package:open_api_forked/src/exception.dart';
 
 /// A list of values in a [KeyedArchive].
 ///
@@ -17,15 +18,18 @@ final class ListArchive extends Object
   ListArchive() : _inner = [];
 
   /// Replaces all instances of [Map] and [List] in this object with [KeyedArchive] and [ListArchive]s.
-  ListArchive.from(List<dynamic> raw)
-    : _inner = raw.map((e) {
-        if (e is Map) {
-          return KeyedArchive(Map<String, dynamic>.from(e));
-        } else if (e is List) {
-          return ListArchive.from(e);
-        }
-        return e;
-      }).toList();
+  ///
+  /// [pointer] is the JSON pointer of [raw] in its document.
+  ListArchive.from(List<dynamic> raw, [String pointer = '#'])
+    : _inner = [
+        for (final (i, e) in raw.indexed)
+          if (e is Map)
+            KeyedArchive.fromMap(e, appendPointer(pointer, i))
+          else if (e is List)
+            ListArchive.from(e, appendPointer(pointer, i))
+          else
+            e,
+      ];
 
   @override
   dynamic operator [](int index) => _inner[index];

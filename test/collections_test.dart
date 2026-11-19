@@ -188,7 +188,13 @@ void main() {
           },
         ),
       ),
-      throwsArgumentError,
+      throwsA(
+        isA<OpenApiFormatException>().having(
+          (e) => e.pointer,
+          'pointer',
+          '#/components/schemas/S',
+        ),
+      ),
     );
   });
 

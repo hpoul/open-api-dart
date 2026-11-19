@@ -5,6 +5,7 @@ import 'dart:collection';
 
 import 'package:open_api_forked/src/codec/list_archive.dart';
 import 'package:open_api_forked/src/codec/resolver.dart';
+import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
 
 /// For each decoded object, the keys whose value in the input was an empty
@@ -76,8 +77,34 @@ final class KeyedArchive extends Object
   KeyedArchive._empty();
 
   /// Use [unarchive] instead.
-  KeyedArchive(this._map) {
+  ///
+  /// [pointer] is the JSON pointer of the map in its document, used in
+  /// [OpenApiFormatException]s.
+  KeyedArchive(this._map, [this.pointer = '#']) {
     _recode();
+  }
+
+  /// The JSON pointer of this object in its document, e.g. `#/paths/~1pets`.
+  String pointer = '#';
+
+  /// The JSON pointer of the value for [key] in this object.
+  String pointerTo(String? key) =>
+      key == null ? pointer : appendPointer(pointer, key);
+
+  /// Converts [value], a decoded map, to a [KeyedArchive] at [pointer].
+  ///
+  /// Throws an [OpenApiFormatException] if a key is not a [String].
+  static KeyedArchive fromMap(Map<dynamic, dynamic> value, String pointer) {
+    for (final key in value.keys) {
+      if (key is! String) {
+        throw OpenApiFormatException(
+          'Keys must be strings, found ${key.runtimeType} $key.',
+          pointer: appendPointer(pointer, '$key'),
+          source: key,
+        );
+      }
+    }
+    return KeyedArchive(Map<String, dynamic>.from(value), pointer);
   }
 
   /// A reference to another object in the same document.
@@ -148,15 +175,18 @@ final class KeyedArchive extends Object
     for (var key in keys) {
       final val = _map[key];
       if (val is Map) {
-        _map[key] = KeyedArchive(Map<String, dynamic>.from(val));
+        _map[key] = KeyedArchive.fromMap(val, pointerTo(key));
       } else if (val is List) {
-        _map[key] = ListArchive.from(val);
+        _map[key] = ListArchive.from(val, pointerTo(key));
       } else if (key == r'$ref') {
-        if (val is Map) {
-          _objectReference = val as KeyedArchive;
-        } else {
-          referenceURI = Uri.parse(Uri.parse(val as String).fragment);
+        if (val is! String) {
+          throw OpenApiFormatException(
+            r'$ref must be a string.',
+            pointer: pointerTo(key),
+            source: val,
+          );
         }
+        referenceURI = Uri.parse(Uri.parse(val).fragment);
       }
     }
   }
@@ -170,8 +200,9 @@ final class KeyedArchive extends Object
     if (referenceURI != null) {
       _objectReference = coder.resolve(referenceURI);
       if (_objectReference == null) {
-        throw ArgumentError(
-          "Invalid document. Reference '#${referenceURI.path}' does not exist in document.",
+        throw OpenApiFormatException(
+          "Reference '#${referenceURI.path}' does not exist in document.",
+          pointer: pointerTo(r'$ref'),
         );
       }
     }
@@ -244,25 +275,82 @@ final class KeyedArchive extends Object
       return null;
     }
 
-    if (T == Uri) {
-      return Uri.parse(v as String) as T;
-    } else if (T == DateTime) {
-      return DateTime.parse(v as String) as T;
+    if (T == Uri || T == DateTime) {
+      if (v is! String) {
+        throw _typeMismatch(key, v, 'a string');
+      }
+      try {
+        return (T == Uri ? Uri.parse(v) : DateTime.parse(v)) as T;
+      } on FormatException catch (e) {
+        throw OpenApiFormatException(
+          'Invalid $T: ${e.message}',
+          pointer: pointerTo(key),
+          source: v,
+        );
+      }
     }
-
-    return v as T?;
+    if (v is! T) {
+      throw _typeMismatch(key, v, _describeType<T>());
+    }
+    return v;
   }
+
+  /// Describes [T] for error messages, e.g. `an integer` for [int].
+  static String _describeType<T>() {
+    final probe = <T>[];
+    return switch (probe) {
+      List<int?>() => 'an integer',
+      List<num?>() => 'a number',
+      List<String?>() => 'a string',
+      List<bool?>() => 'a boolean',
+      List<Map<dynamic, dynamic>?>() => 'an object',
+      List<List<dynamic>?>() => 'a list',
+      _ => '$T',
+    };
+  }
+
+  OpenApiFormatException _typeMismatch(
+    String? key,
+    Object? value,
+    String expected,
+  ) => OpenApiFormatException(
+    'Expected $expected, found ${_describe(value)}.',
+    pointer: pointerTo(key),
+    source: value,
+  );
+
+  static String _describe(Object? value) => switch (value) {
+    Map() => 'an object',
+    List() => 'a list',
+    String() => 'a string',
+    num() => 'a number',
+    bool() => 'a boolean',
+    null => 'null',
+    _ => value.runtimeType.toString(),
+  };
 
   /// Returns the list associated with [key] as a growable `List<T>`, or
   /// `null` if there is none.
   ///
-  /// Throws a [TypeError] if the value is not a list of [T].
+  /// Throws an [OpenApiFormatException] if the value is not a list of [T].
   List<T>? decodeList<T>(String key) {
     final value = _getValue(key);
     if (value == null) {
       return null;
     }
-    return List<T>.from(value as List);
+    if (value is! List) {
+      throw _typeMismatch(key, value, 'a list');
+    }
+    for (final (i, element) in value.indexed) {
+      if (element is! T) {
+        throw OpenApiFormatException(
+          'Expected ${_describeType<T>()}, found ${_describe(element)}.',
+          pointer: appendPointer(pointerTo(key), i),
+          source: element,
+        );
+      }
+    }
+    return List<T>.from(value);
   }
 
   /// Returns the instance of [T] associated with [key].
@@ -277,9 +365,7 @@ final class KeyedArchive extends Object
     }
 
     if (val is! KeyedArchive) {
-      throw ArgumentError(
-        "Cannot decode key '$key' into '$T', because the value is not a Map. Actual value: '$val'.",
-      );
+      throw _typeMismatch(key, val, 'an object');
     }
 
     return _decodedObject(val, inflate);
@@ -300,17 +386,19 @@ final class KeyedArchive extends Object
       return null;
     }
     if (val is! List) {
-      throw ArgumentError(
-        "Cannot decode key '$key' as 'List<$T>', because value is not a List. Actual value: '$val'.",
-      );
+      throw _typeMismatch(key, val, 'a list');
     }
 
     return [
       for (final (i, v) in val.indexed)
-        _decodedObject(v as KeyedArchive?, inflate) ??
-            (throw ArgumentError(
-              "Cannot decode key '$key': element $i is null.",
-            )),
+        if (v is KeyedArchive)
+          _decodedObject(v, inflate)!
+        else
+          throw OpenApiFormatException(
+            'Expected an object, found ${_describe(v)}.',
+            pointer: appendPointer(pointerTo(key), i),
+            source: v,
+          ),
     ];
   }
 
@@ -329,19 +417,19 @@ final class KeyedArchive extends Object
       return null;
     }
 
-    if (v is! Map<String, dynamic>) {
-      throw ArgumentError(
-        "Cannot decode key '$key' as 'Map<String, $T>', because value is not a Map. Actual value: '$v'.",
-      );
+    if (v is! KeyedArchive) {
+      throw _typeMismatch(key, v, 'an object');
     }
 
     return {
-      for (final k in v.keys)
-        k:
-            _decodedObject(v[k] as KeyedArchive?, inflate) ??
-            (throw ArgumentError(
-              "Cannot decode key '$key': value of '$k' is null.",
-            )),
+      for (final MapEntry(key: k, value: e) in v.entries)
+        k: e is KeyedArchive
+            ? _decodedObject(e, inflate)!
+            : throw OpenApiFormatException(
+                'Expected an object, found ${_describe(e)}.',
+                pointer: appendPointer(pointerTo(key), k),
+                source: e,
+              ),
     };
   }
 

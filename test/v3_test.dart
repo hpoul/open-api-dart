@@ -482,15 +482,21 @@ void main() {
       '#/nope/x/y',
       '#/components/schemas/B/type',
     ]) {
-      test("Unresolvable reference '$ref' throws ArgumentError", () {
+      test("Unresolvable reference '$ref' throws OpenApiFormatException", () {
         expect(
           () => APIDocument.fromMap(withRef(ref)),
           throwsA(
-            isA<ArgumentError>().having(
-              (e) => e.message,
-              'message',
-              contains("Reference '$ref'"),
-            ),
+            isA<OpenApiFormatException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  contains("Reference '$ref'"),
+                )
+                .having(
+                  (e) => e.pointer,
+                  'pointer',
+                  r'#/components/schemas/A/$ref',
+                ),
           ),
         );
       });
@@ -544,7 +550,7 @@ void main() {
       expect(
         () => APIDocument.fromMap(withRef('other.yaml#/components/schemas/B')),
         throwsA(
-          isA<ArgumentError>().having(
+          isA<OpenApiFormatException>().having(
             (e) => e.message,
             'message',
             contains('not a local reference'),

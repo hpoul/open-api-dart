@@ -1,4 +1,5 @@
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
+import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/components.dart';
 import 'package:open_api_forked/src/v3/document.dart';
@@ -143,8 +144,10 @@ final class APISecurityScheme extends APIObject {
         }
         break;
       default:
-        throw ArgumentError(
-          "APISecurityScheme must have non-null values for: 'type' ${object.decode<Object?>("type")}.",
+        throw OpenApiFormatException(
+          'Unknown or missing security scheme type.',
+          pointer: object.pointerTo('type'),
+          source: object.decode<Object?>('type'),
         );
     }
   }
@@ -280,9 +283,16 @@ final class APISecuritySchemeOAuth2Flow extends APIObject {
 
     // `scopes` is required by the spec, but often left out when empty.
     final decodedScopes = object.decode<Map<String, Object?>>('scopes');
-    scopes = decodedScopes == null
-        ? {}
-        : Map<String, String>.from(decodedScopes);
+    scopes = {
+      for (final MapEntry(:key, :value) in (decodedScopes ?? {}).entries)
+        key: value is String
+            ? value
+            : throw OpenApiFormatException(
+                'Expected a string scope description.',
+                pointer: appendPointer(object.pointerTo('scopes'), key),
+                source: value,
+              ),
+    };
   }
 }
 
@@ -317,8 +327,12 @@ final class APISecurityRequirement extends APIObject {
     super.decode(object);
 
     for (var key in object.keys) {
-      final req = List<String>.from(object.decode<List<Object?>>(key)!);
-      requirements[key] = req;
+      requirements[key] =
+          object.decodeList<String>(key) ??
+          (throw OpenApiFormatException(
+            'Expected a list of scope names, found null.',
+            pointer: object.pointerTo(key),
+          ));
     }
   }
 }

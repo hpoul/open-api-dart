@@ -1,5 +1,7 @@
 library;
 
+export 'package:open_api_forked/src/exception.dart' show OpenApiFormatException;
+export 'package:open_api_forked/src/object.dart';
 export 'package:open_api_forked/src/v3/callback.dart';
 export 'package:open_api_forked/src/v3/components.dart';
 export 'package:open_api_forked/src/v3/document.dart';
@@ -16,4 +18,3 @@ export 'package:open_api_forked/src/v3/schema.dart';
 export 'package:open_api_forked/src/v3/security.dart';
 export 'package:open_api_forked/src/v3/server.dart';
 export 'package:open_api_forked/src/v3/types.dart';
-export 'package:open_api_forked/src/object.dart';
