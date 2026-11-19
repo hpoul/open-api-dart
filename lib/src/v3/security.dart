@@ -1,3 +1,4 @@
+import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/components.dart';
@@ -143,8 +144,10 @@ final class APISecurityScheme extends APIObject {
         }
         break;
       default:
-        throw ArgumentError(
-          "APISecurityScheme must have non-null values for: 'type' ${object.decode<Object?>("type")}.",
+        throw OpenApiFormatException(
+          'Unknown or missing security scheme type.',
+          pointer: object.pointerTo('type'),
+          source: object.decode<Object?>('type'),
         );
     }
   }

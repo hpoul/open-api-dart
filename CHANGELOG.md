@@ -59,8 +59,15 @@
 - Encoding no longer throws for `paths`, operation `responses`, request body
   `content` or OAuth2 `flows` being missing, since they can no longer be
   null.
-- Invalid `tags` or `required` lists now throw `TypeError` instead of
-  `FailedCast`.
+- **Breaking:** decoding a malformed document throws an
+  `OpenApiFormatException` (which implements `FormatException`) instead of
+  an `ArgumentError`, `TypeError` or `FailedCast`. Its `pointer` is a JSON
+  pointer to the offending value, such as
+  `#/paths/~1pets/get/responses/200`. This covers wrong value types, a
+  `null` inside a map or list of objects, non-string keys (as YAML can
+  produce), unresolvable or non-local `$ref`s, and unknown security scheme
+  types. Errors when encoding an invalid model built in code are still
+  `ArgumentError`s.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
   decode; their keys must be strings.
 

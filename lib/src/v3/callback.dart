@@ -1,3 +1,4 @@
+import 'package:open_api_forked/src/exception.dart';
 import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/src/object.dart';
 import 'package:open_api_forked/src/v3/path.dart';
@@ -25,8 +26,10 @@ final class APICallback extends APIObject {
         continue;
       }
       if (object[key] is! KeyedArchive) {
-        throw ArgumentError(
-          'Invalid specification. Callback contains non-object value.',
+        throw OpenApiFormatException(
+          'Expected a path item object in callback.',
+          pointer: object.pointerTo(key),
+          source: object[key],
         );
       }
       paths[key] = object.decodeObject(key, () => APIPath())!;
