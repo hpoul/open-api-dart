@@ -16,6 +16,10 @@ void main() {
               'headers': {
                 'X-Rate-Limit': {
                   'description': 'Requests left',
+                  'example': 42,
+                  'examples': {
+                    'low': {'value': 1},
+                  },
                   'required': true,
                   'schema': {'type': 'integer'},
                 },

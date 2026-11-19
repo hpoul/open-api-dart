@@ -35,11 +35,20 @@ class APIHeader extends APIObject {
   set isDeprecated(bool? value) => _deprecated = value;
   bool? _deprecated;
 
-  /// How the header value is serialized. The default for headers is
-  /// `simple`.
+  /// How the header value is serialized. `null` means the default for
+  /// headers, `simple`.
   String? style;
 
+  /// Whether arrays and objects generate separate values. `null` means the
+  /// default for `simple`, `false`.
   bool? explode;
+
+  /// An example of the header's value, kept as decoded.
+  Object? example;
+
+  /// Examples of the header's value, kept as decoded (Example Objects are
+  /// not modelled yet).
+  Map<String, dynamic>? examples;
 
   /// The schema defining the type of the header.
   APISchemaObject? schema;
@@ -59,6 +68,8 @@ class APIHeader extends APIObject {
     explode = object.decode('explode');
     schema = object.decodeObject('schema', () => APISchemaObject());
     content = object.decodeObjectMap('content', () => APIMediaType());
+    example = object.decode<Object?>('example');
+    examples = object.decode<Map<String, dynamic>>('examples');
   }
 
   @override
@@ -72,5 +83,7 @@ class APIHeader extends APIObject {
     object.encode('explode', explode);
     object.encodeObject('schema', schema);
     object.encodeObjectMap('content', content);
+    object.encode('example', example);
+    object.encode('examples', examples);
   }
 }
