@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.0.0-dev.1 (unreleased)
+
+- **Breaking:** removed Swagger 2.0 support (`package:open_api_forked/v2.dart`
+  and everything under `lib/src/v2`). Use 3.0.x if you need it.
+
 ## 3.0.1
 
 - Fix crash decoding `components` without `schemas` (schemas is now an empty map, so it encodes back as `schemas: {}`).
