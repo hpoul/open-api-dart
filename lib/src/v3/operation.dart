@@ -165,7 +165,7 @@ final class APIOperation extends APIObject {
     object.encode('operationId', id);
     object.encodeObjects('parameters', parameters, omitEmpty: true);
     object.encodeObject('requestBody', requestBody);
-    object.encodeObjectMap('responses', responses, omitEmpty: true);
+    object.encodeObjectMap('responses', responses);
     object.encodeObjectMap('callbacks', callbacks, omitEmpty: true);
     object.encode('deprecated', isDeprecated);
     object.encodeObjects('security', security);

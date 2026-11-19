@@ -195,9 +195,7 @@ final class KeyedArchive extends Object
         if ((value is Map && value.isEmpty) || (value is List && value.isEmpty))
           key,
     };
-    if (keys.isNotEmpty) {
-      _emptyKeysOnDecode[object] = keys;
-    }
+    _emptyKeysOnDecode[object] = keys.isEmpty ? null : keys;
   }
 
   /// Whether an empty collection for [key] must be omitted when encoding:

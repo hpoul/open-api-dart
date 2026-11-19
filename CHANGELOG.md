@@ -44,18 +44,21 @@
 - **Breaking:** collections are non-null, with non-null elements, and default
   to empty growable collections: `Map<String, APISchemaObject> schemas = {}`,
   `List<APIParameter> parameters = []`, `Map<String, APIOperation> operations`,
-  and so on. Constructors still accept `null` for them. Two exceptions stay
+  and so on. Most constructors still accept `null` for optional collections.
+  `APIResponse.addHeader` takes a non-null header. Two exceptions stay
   nullable because absent means something different from empty:
   `security` (absent inherits, `[]` means no auth) and `servers`. Free-form
   values (`enum`, `example`, `examples`) are unchanged.
-- Absent and empty collections now round-trip: an empty collection is only
-  encoded if it was present in the decoded input, or was filled in code.
-  This fixes `components` without `schemas` encoding as `schemas: {}`.
+- Absent and empty collections now round-trip: an optional empty collection
+  is only encoded if it was present in the decoded input. This fixes
+  `components` without `schemas` encoding as `schemas: {}`. The REQUIRED
+  `paths`, operation `responses`, request body `content`, OAuth2 `flows` and
+  `scopes` are always encoded, even when empty.
 - A `null` value inside a map or list of objects (such as `schemas: {A: null}`)
   is rejected with an `ArgumentError`.
-- Encoding no longer throws for an empty `paths`, operation `responses`,
-  request body `content` or OAuth2 `flows`; checking required fields moves to
-  validation.
+- Encoding no longer throws for `paths`, operation `responses`, request body
+  `content` or OAuth2 `flows` being missing, since they can no longer be
+  null.
 - Invalid `tags` or `required` lists now throw `TypeError` instead of
   `FailedCast`.
 - Maps not typed `Map<String, dynamic>` (such as YAML maps) inside lists now
@@ -63,7 +66,7 @@
 
 ## 3.0.1
 
-- Fix crash decoding `components` without `schemas` (schemas is now an empty map, so it encodes back as `schemas: {}` in 3.0.1).
+- Fix crash decoding `components` without `schemas` (schemas is now an empty map, so it encodes back as `schemas: {}`).
 - Fix decoding and encoding of callbacks (decoding crashed on any callback, encoding threw).
 - Fix crash decoding a server variable without `enum`.
 - Fix crash encoding an `openIdConnect` security scheme.

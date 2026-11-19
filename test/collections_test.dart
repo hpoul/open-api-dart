@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:open_api_forked/src/codec/keyed_archive.dart';
 import 'package:open_api_forked/v3.dart';
 import 'package:test/test.dart';
 
@@ -238,5 +239,31 @@ void main() {
     expect(op.security, isNull);
     expect(APIPath().parameters, isEmpty);
     expect(APIServerVariable('d').availableValues, isEmpty);
+  });
+
+  test('required collections are always encoded', () {
+    final doc = APIDocument()
+      ..version = '3.0.0'
+      ..info = APIInfo('x', '1');
+    expect(doc.asMap()['paths'], <String, dynamic>{});
+    final op = APIOperation('x', null);
+    final body = APIRequestBody({});
+    final archive = APIDocument()
+      ..version = '3.0.0'
+      ..info = APIInfo('x', '1')
+      ..paths = {
+        '/a': APIPath(operations: {'post': op..requestBody = body}),
+      };
+    final encoded = archive.asMap()['paths']['/a']['post'] as Map;
+    expect(encoded['responses'], <String, dynamic>{});
+    expect(encoded['requestBody']['content'], <String, dynamic>{});
+  });
+
+  test('decoding again forgets earlier empty keys', () {
+    final schema = APISchemaObject()
+      ..decode(KeyedArchive.unarchive({'required': <dynamic>[]}));
+    expect(KeyedArchive.archive(schema).containsKey('required'), isTrue);
+    schema.decode(KeyedArchive.unarchive({'type': 'string'}));
+    expect(KeyedArchive.archive(schema).containsKey('required'), isFalse);
   });
 }

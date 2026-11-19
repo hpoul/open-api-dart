@@ -51,6 +51,6 @@ final class APIRequestBody extends APIObject {
 
     object.encode('description', description);
     object.encode('required', isRequired);
-    object.encodeObjectMap('content', content, omitEmpty: true);
+    object.encodeObjectMap('content', content);
   }
 }

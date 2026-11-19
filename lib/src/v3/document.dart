@@ -164,7 +164,7 @@ final class APIDocument extends APIObject {
     object.encode('openapi', version);
     object.encodeObject('info', info);
     object.encodeObjects('servers', servers);
-    object.encodeObjectMap('paths', paths, omitEmpty: true);
+    object.encodeObjectMap('paths', paths);
     object.encodeObject('components', components);
     object.encodeObjects('security', security);
     object.encodeObjects('tags', tags, omitEmpty: true);
